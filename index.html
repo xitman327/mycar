@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Car Trip Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+        .dashboard-header { display: none; }
+        .trip-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .trip-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .delete-trip {
+            transition: all 0.2s;
+            opacity: 0.5;
+        }
+
+        .trip-card:hover .delete-trip {
+            opacity: 1;
+        }
+
+        .delete-trip:hover {
+            transform: scale(1.1);
+        }
+        #map {
+            height: 100%;
+            border-radius: 0;
+            margin-bottom: 0;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+            touch-action: none; /* Prevent browser touch actions */
+        }
+        /* Improve marker touch targets */
+        .leaflet-marker-icon {
+            touch-action: none;
+        }
+
+        .active-trip {
+            border-left: 5px solid #0d6efd;
+        }
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .auth-form {
+            margin-top: 20px;
+        }
+        .user-info {
+            color: white;
+            margin-right: 15px;
+        }
+        .loading-spinner {
+            display: none;
+            width: 3rem;
+            height: 3rem;
+        }
+        .app-shell {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+        :root {
+            --sidebar-width: 360px;
+            --sidebar-max-width: 420px;
+        }
+        .sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            max-width: var(--sidebar-max-width);
+            background: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            overflow-y: auto;
+            padding: 16px;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.05);
+            transform: translateX(0);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            z-index: 1100;
+            backdrop-filter: blur(6px);
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+            box-shadow: none;
+        }
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .map-area {
+            flex: 1;
+            position: relative;
+        }
+        .sidebar-toggle {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 1200;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            border-radius: 10px;
+            gap: 4px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .sidebar-toggle .bar {
+            width: 3px;
+            height: 18px;
+            background: #2c3e50;
+            border-radius: 2px;
+            transition: height 0.2s ease, transform 0.2s ease;
+        }
+        .sidebar-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+            background-color: #f8f9fb;
+        }
+        .sidebar-toggle.hidden .bar:nth-child(2) {
+            height: 12px;
+        }
+        .sidebar-toggle.hidden .bar:nth-child(3) {
+            height: 8px;
+            transform: translateY(2px);
+        }
+        .sidebar-open .sidebar-toggle {
+            left: calc(var(--sidebar-width) + 12px);
+        }
+        .sidebar-toggle.right-toggle {
+            left: auto;
+            right: 12px;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+        }
+        .diagnostic-open .sidebar-toggle.right-toggle {
+            right: calc(var(--sidebar-width) + 12px);
+        }
+        .bolt-icon {
+            display: inline-block;
+            transform: translateY(-1px);
+        }
+        #map {
+            position: absolute;
+            inset: 0;
+            height: 100%;
+            width: 100%;
+            border-radius: 0;
+            margin: 0;
+        }
+        .sidebar h3, .sidebar h2, .sidebar h5 {
+            margin: 0;
+        }
+        .stats-card {
+            margin-bottom: 12px;
+        }
+        @media (max-width: 992px) {
+            :root {
+                --sidebar-width: 100%;
+                --sidebar-max-width: 100%;
+            }
+            .sidebar {
+                width: var(--sidebar-width);
+                max-width: var(--sidebar-max-width);
+            }
+            .sidebar-toggle {
+                top: 16px;
+                left: 12px;
+            }
+            .sidebar-open .sidebar-toggle {
+                left: 12px;
+            }
+            .diagnostic-open .sidebar-toggle.right-toggle {
+                right: 12px;
+            }
+        }
+        .start-icon, .end-icon {
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 4px rgba(0,0,0,0.4);
+        }
+        .start-icon {
+            background: #2ecc71;
+        }
+        .end-icon {
+            background: #e74c3c;
+        }
+        .triangle-marker {
+            width: 20px;
+            height: 20px;
+            position: relative;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            margin: 0 !important;
+        }
+        .triangle-marker .triangle-shape {
+            width: 20px;
+            height: 20px;
+            display: block;
+            position: absolute;
+            left: 0;
+            top: 0;
+            transform: rotate(var(--rotation, 0deg));
+            transform-origin: 50% 0%;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+            pointer-events: none;
+        }
+        .sidebar-right {
+            position: absolute;
+            left: auto;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            max-width: var(--sidebar-max-width);
+            background: #ffffff;
+            border-left: 1px solid #e5e5e5;
+            overflow-y: auto;
+            padding: 16px;
+            box-shadow: -4px 0 12px rgba(0,0,0,0.05);
+            transform: translateX(100%);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            z-index: 1100;
+            backdrop-filter: blur(6px);
+            display: none;
+        }
+        .sidebar-right.hidden {
+            transform: translateX(100%);
+            box-shadow: none;
+            display: none;
+        }
+        .sidebar-right:not(.hidden) {
+            transform: translateX(0);
+            display: block;
+        }
+        #ble-log {
+            height: 180px;
+            overflow-y: auto;
+            font-family: monospace;
+            background: #f8f9fa;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .ble-chip {
+            border: 1px dashed #ced4da;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: #f9fafb;
+        }
+        .diag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        .diag-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: #fbfbfc;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .diag-card h6 {
+            margin: 0 0 2px 0;
+            font-size: 0.9rem;
+        }
+        .diag-label {
+            font-size: 0.78rem;
+            color: #6c757d;
+        }
+        .diag-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .diag-card.live-blink {
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+            border-color: #0d6efd;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Container -->
+    <div id="auth-container" class="auth-container" style="display: none;">
+        <h2 class="text-center mb-4">Sign In</h2>
+        <div id="auth-error" class="alert alert-danger" style="display: none;"></div>
+        
+        <form id="auth-form" class="auth-form">
+            <div class="mb-3">
+                <label for="auth-email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="auth-email" required>
+            </div>
+            <div class="mb-3">
+                <label for="auth-password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="auth-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <span id="auth-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+                Sign In
+            </button>
+        </form>
+        
+        <div class="text-center mt-3">
+            <p>Don't have an account? <a href="#" id="switch-to-signup">Sign Up</a></p>
+        </div>
+    </div>
+
+    <!-- Sign Up Container -->
+    <div id="signup-container" class="auth-container" style="display: none;">
+        <h2 class="text-center mb-4">Sign Up</h2>
+        <div id="signup-error" class="alert alert-danger" style="display: none;"></div>
+        
+        <form id="signup-form" class="auth-form">
+            <div class="mb-3">
+                <label for="signup-email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="signup-email" required>
+            </div>
+            <div class="mb-3">
+                <label for="signup-password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="signup-password" required minlength="6">
+            </div>
+            <div class="mb-3">
+                <label for="signup-confirm" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="signup-confirm" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <span id="signup-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+                Create Account
+            </button>
+        </form>
+        
+        <div class="text-center mt-3">
+            <p>Already have an account? <a href="#" id="switch-to-signin">Sign In</a></p>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboard-content" class="app-shell" style="display: none;">
+        <aside class="sidebar">
+            <div id="user-info" class="d-flex justify-content-between align-items-center mb-3" style="display: none;">
+                <span id="user-email" class="fw-semibold"></span>
+                <button id="sign-out-btn" class="btn btn-sm btn-outline-secondary ms-2">Sign Out</button>
+            </div>
+
+            <div class="stats-card">
+                <h5 class="text-muted">Overview</h5>
+                <div class="row mt-2 g-2">
+                    <div class="col-6">
+                        <div class="metric-label">Total Trips</div>
+                        <div class="metric-value" id="total-trips">0</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Avg Speed</div>
+                        <div class="metric-value" id="avg-speed">0 km/h</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Distance</div>
+                        <div class="metric-value" id="total-distance">0 km</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Drive Time</div>
+                        <div class="metric-value" id="total-time">0h 0m</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card" id="trip-details" style="display: none;">
+                <h5 class="text-muted mb-2">Selected Trip</h5>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="metric-label">Top Speed</div>
+                        <div class="metric-value" id="top-speed">0 km/h</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Duration</div>
+                        <div class="metric-value" id="trip-duration">0m</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Max Consumption</div>
+                        <div class="metric-value" id="max-consumption">0 lps</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-label">Locations</div>
+                        <div class="metric-value" id="locations-count">0</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="metric-label">Start Time</div>
+                    <div class="metric-value" id="start-time">-</div>
+                </div>
+                <div class="mt-2">
+                    <div class="metric-label">End Time</div>
+                    <div class="metric-value" id="end-time">-</div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h5 class="mb-0">Trips</h5>
+                    <p class="mb-0 text-muted small" id="trip-count">0 trips total</p>
+                </div>
+                <button id="add-trip-btn" class="btn btn-primary btn-sm">Add Trip</button>
+            </div>
+            <div id="trips-list">
+                <p>Loading trips...</p>
+            </div>
+        </aside>
+
+        <main class="map-area">
+            <button id="sidebar-toggle" class="btn btn-light btn-sm sidebar-toggle" aria-label="Toggle trips">
+                <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </button>
+            <button id="diagnostic-toggle" class="btn btn-light btn-sm sidebar-toggle right-toggle" aria-label="Toggle BLE diagnostics">
+                <span class="bolt-icon">&#9889;</span>
+            </button>
+            <div id="map"></div>
+        </main>
+
+        <aside class="sidebar sidebar-right hidden" id="diagnostic-panel">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h5 class="mb-0">BLE Diagnostics</h5>
+                    <p class="mb-0 text-muted small">
+                        <span id="ble-status-dot" class="status-dot bg-secondary"></span>
+                        <span id="ble-status-text">Disconnected</span>
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <button id="ble-connect-btn" class="btn btn-primary btn-sm">Connect</button>
+                    <button id="ble-disconnect-btn" class="btn btn-outline-secondary btn-sm" disabled>Disconnect</button>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <div class="metric-label">Device</div>
+                        <div class="metric-value" id="ble-device-name">None</div>
+                    </div>
+                    <span class="badge bg-secondary" id="ble-connection-badge">Idle</span>
+                </div>
+                <div class="small text-muted mb-1">Service + characteristic UUIDs are set in code.</div>
+                <div class="alert alert-warning p-2 py-1 small mb-0">
+                    <strong>Android:</strong> use Chrome over HTTPS, enable Bluetooth & Location, then tap Connect.
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-muted">Diagnostic Snapshot</h6>
+                    <span class="badge bg-light text-secondary border">live</span>
+                </div>
+                <div class="diag-grid">
+                    <div class="diag-card">
+                        <h6>Time</h6>
+                        <div class="diag-label">System clock</div>
+                        <div class="diag-value" id="diag-time">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>GPS</h6>
+                        <div class="diag-label">Fix / Sats</div>
+                        <div class="diag-value"><span id="diag-gps-fix">--</span> | sats <span id="diag-gps-sats">--</span></div>
+                        <div class="diag-label mt-1">Speed</div>
+                        <div class="diag-value" id="diag-gps-speed">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>WiFi</h6>
+                        <div class="diag-label">Status</div>
+                        <div class="diag-value" id="diag-wifi">--</div>
+                        <div class="diag-label mt-1">IP / Signal</div>
+                        <div class="diag-value"><span id="diag-ip">--</span> | <span id="diag-signal">--</span></div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>OBD</h6>
+                        <div class="diag-label">Protocol</div>
+                        <div class="diag-value" id="diag-obd">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>Upload</h6>
+                        <div class="diag-label">Stage / Files</div>
+                        <div class="diag-value" id="diag-upload">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>Log</h6>
+                        <div class="diag-label">Status / Points</div>
+                        <div class="diag-value" id="diag-log">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>Car</h6>
+                        <div class="diag-label">Engine / Speed / Temp</div>
+                        <div class="diag-value" id="diag-car">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>Battery</h6>
+                        <div class="diag-label">Vehicle battery</div>
+                        <div class="diag-value" id="diag-batt">--</div>
+                    </div>
+                    <div class="diag-card">
+                        <h6>RAM</h6>
+                        <div class="diag-label">Usage</div>
+                        <div class="diag-value" id="diag-ram">--</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    
+                        <!-- Add this inside your HTML, replacing the existing trip form -->
+<div class="modal fade" id="addTripModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Trip</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="trip-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="trip-name" class="form-label">Trip Name</label>
+                                <input type="text" class="form-control" id="trip-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="start-timestamp" class="form-label">Start Time</label>
+                                <input type="datetime-local" class="form-control" id="start-timestamp" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="end-timestamp" class="form-label">End Time</label>
+                                <input type="datetime-local" class="form-control" id="end-timestamp" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="trip-distance" class="form-label">Distance (km)</label>
+                                <input type="number" step="0.1" class="form-control" id="trip-distance" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="top-speed-input" class="form-label">Top Speed (km/h)</label>
+                                <input type="number" class="form-control" id="top-speed-input" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Trip Positions</label>
+                                <div id="positions-container" style="max-height: 300px; overflow-y: auto;">
+                                    <!-- Positions will be added here -->
+                                </div>
+                                <div class="input-group mt-2">
+                                    <input type="number" step="0.000001" class="form-control" id="position-lat" placeholder="Latitude">
+                                    <input type="number" step="0.000001" class="form-control" id="position-lng" placeholder="Longitude">
+                                    <button class="btn btn-outline-secondary" type="button" id="add-position-btn">Add</button>
+                                </div>
+                                <small class="text-muted">Click on map to auto-fill coordinates</small>
+                            </div>
+                            <div id="position-map" style="height: 200px; border-radius: 5px;"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="save-trip">
+                    <span id="save-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
+                    Save Trip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+                    </form>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjB8_JWiNeGSYDhzXQuZ1AAQHsVCOXLeA",
+            authDomain: "carlogger-a6de5.firebaseapp.com",
+            databaseURL: "https://carlogger-a6de5-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "carlogger-a6de5",
+            storageBucket: "carlogger-a6de5.firebasestorage.app",
+            messagingSenderId: "77433139179",
+            appId: "1:77433139179:web:8e93e3d7fa7364dab7f3ae"
+        };
+        
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        
+        // // Initialize map
+        // let map = L.map('map', {scrollWheelZoom: false}).setView([0, 0], 2);
+        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        // }).addTo(map);
+
+        // Initialize map
+        let map = L.map('map', {
+            scrollWheelZoom: true,  // Disable scroll wheel zoom
+            touchZoom: true,        // Enable pinch-to-zoom
+            doubleClickZoom: true,  // Enable double-tap zoom
+            boxZoom: true,         // Enable shift-drag zoom box
+            keyboard: true        // Disable keyboard navigation (optional)
+        }).setView([0, 0], 2);
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Get current location
+        map.locate({
+            setView: true,
+            maxZoom: 16,
+            watch: false, // Set to true to continuously update
+            enableHighAccuracy: true
+        });
+
+        // Handle location found
+        map.on('locationfound', function(e) {
+            L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
+                .bindPopup("You are here").openPopup();
+            
+            L.circle(e.latlng, {
+                color: 'blue',
+                fillColor: '#30f',
+                fillOpacity: 0.2,
+                radius: e.accuracy
+            }).addTo(map);
+        });
+
+        // Handle location error
+        map.on('locationerror', function(e) {
+            alert("Location access denied. Using default view.");
+        });
+
+
+        // Add these variables at the top with your other global variables
+let positionMap;
+let positionMarkers = [];
+let positionCoordinates = [];
+
+// Initialize the position map when modal is shown
+document.getElementById('addTripModal').addEventListener('shown.bs.modal', function() {
+    positionMap = L.map('position-map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(positionMap);
+    
+    // Add click handler to map
+    positionMap.on('click', function(e) {
+        document.getElementById('position-lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('position-lng').value = e.latlng.lng.toFixed(6);
+    });
+});
+
+// Clear the position map when modal is hidden
+document.getElementById('addTripModal').addEventListener('hidden.bs.modal', function() {
+    if (positionMap) {
+        positionMap.remove();
+        positionMap = null;
+    }
+    positionCoordinates = [];
+    positionMarkers = [];
+    document.getElementById('positions-container').innerHTML = '';
+});
+
+// Add position button handler
+document.getElementById('add-position-btn').addEventListener('click', function() {
+    const lat = parseFloat(document.getElementById('position-lat').value);
+    const lng = parseFloat(document.getElementById('position-lng').value);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+        alert('Please enter valid coordinates');
+        return;
+    }
+    
+    // Add to coordinates array
+    const position = {
+        lat: lat,
+        lng: lng,
+        time: Math.floor(Date.now() / 1000), // Current timestamp
+        time_string: new Date().toLocaleString(),
+        speed: 0, // Can be modified if you have speed data
+        consumption: { lps: 0 } // Default values
+    };
+    positionCoordinates.push(position);
+    
+    // Add marker to map
+    const marker = L.marker([lat, lng]).addTo(positionMap)
+        .bindPopup(`Position ${positionCoordinates.length}`);
+    positionMarkers.push(marker);
+    
+    // Add to positions list
+    const positionElement = document.createElement('div');
+    positionElement.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
+    positionElement.innerHTML = `
+        <div>
+            <strong>Position ${positionCoordinates.length}</strong>
+            <div class="text-muted small">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+        </div>
+        <button class="btn btn-sm btn-outline-danger remove-position" data-index="${positionCoordinates.length - 1}">
+            &times;
+        </button>
+    `;
+    document.getElementById('positions-container').appendChild(positionElement);
+    
+    // Add remove handler
+    positionElement.querySelector('.remove-position').addEventListener('click', function() {
+        const index = parseInt(this.getAttribute('data-index'));
+        positionCoordinates.splice(index, 1);
+        positionMap.removeLayer(positionMarkers[index]);
+        positionMarkers.splice(index, 1);
+        renderPositionList();
+    });
+    
+    // Clear inputs
+    document.getElementById('position-lat').value = '';
+    document.getElementById('position-lng').value = '';
+    
+    // Zoom to show all markers
+    if (positionMarkers.length > 0) {
+        const group = new L.featureGroup(positionMarkers);
+        positionMap.fitBounds(group.getBounds());
+    }
+});
+
+function renderPositionList() {
+    const container = document.getElementById('positions-container');
+    container.innerHTML = '';
+    
+    positionCoordinates.forEach((pos, index) => {
+        const positionElement = document.createElement('div');
+        positionElement.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
+        positionElement.innerHTML = `
+            <div>
+                <strong>Position ${index + 1}</strong>
+                <div class="text-muted small">${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}</div>
+            </div>
+            <button class="btn btn-sm btn-outline-danger remove-position" data-index="${index}">
+                &times;
+            </button>
+        `;
+        container.appendChild(positionElement);
+        
+        // Add remove handler
+        positionElement.querySelector('.remove-position').addEventListener('click', function() {
+            const idx = parseInt(this.getAttribute('data-index'));
+            positionCoordinates.splice(idx, 1);
+            positionMap.removeLayer(positionMarkers[idx]);
+            positionMarkers.splice(idx, 1);
+            renderPositionList();
+        });
+    });
+}
+
+// Update your saveTrip function to include positions
+function saveTrip() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const tripName = document.getElementById('trip-name').value;
+    const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
+    const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
+    const distance = parseFloat(document.getElementById('trip-distance').value);
+    const topSpeed = parseInt(document.getElementById('top-speed-input').value);
+
+    if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
+        alert("Please fill all required fields with valid values");
+        return;
+    }
+
+    const saveSpinner = document.getElementById('save-spinner');
+    saveSpinner.style.display = 'inline-block';
+
+    const newTrip = {
+        name: tripName,
+        start_timestamp: startTimestamp,
+        end_timestamp: endTimestamp,
+        start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
+        end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
+        trip_distance: distance,
+        top_speed: topSpeed,
+        'trip_duration': endTimestamp - startTimestamp,
+        trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
+        trip_locations_count: positionCoordinates.length
+    };
+
+    const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
+    tripsRef.push(newTrip)
+        .then(() => {
+            document.getElementById('trip-form').reset();
+            positionCoordinates = [];
+            positionMarkers = [];
+            document.getElementById('positions-container').innerHTML = '';
+            addTripModal.hide();
+        })
+        .catch(error => {
+            console.error("Error saving trip:", error);
+            alert("Error saving trip: " + error.message);
+        })
+        .finally(() => {
+            saveSpinner.style.display = 'none';
+        });
+}
+
+// Save new trip to Firebase
+        // function saveTrip() {
+        //     const user = auth.currentUser;
+        //     if (!user) return;
+
+        //     const tripName = document.getElementById('trip-name').value;
+        //     const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
+        //     const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
+        //     const distance = parseFloat(document.getElementById('trip-distance').value);
+        //     const topSpeed = parseInt(document.getElementById('top-speed-input').value);
+
+        //     if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
+        //         alert("Please fill all fields with valid values");
+        //         return;
+        //     }
+
+        //     const saveSpinner = document.getElementById('save-spinner');
+        //     saveSpinner.style.display = 'inline-block';
+
+        //     const newTrip = {
+        //         name: tripName,
+        //         start_timestamp: startTimestamp,
+        //         end_timestamp: endTimestamp,
+        //         start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
+        //         end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
+        //         trip_distance: distance,
+        //         top_speed: topSpeed,
+        //         'trip duration': endTimestamp - startTimestamp,
+        //         trip_locations: [], // Empty array for now
+        //         trip_locations_count: 0
+        //     };
+
+        //     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
+        //     tripsRef.push(newTrip)
+        //         .then(() => {
+        //             document.getElementById('trip-form').reset();
+        //             addTripModal.hide();
+        //         })
+        //         .catch(error => {
+        //             console.error("Error saving trip:", error);
+        //             alert("Error saving trip: " + error.message);
+        //         })
+        //         .finally(() => {
+        //             saveSpinner.style.display = 'none';
+        //         });
+        // }
+
+        
+        // Global variables
+        let trips = [];
+        let selectedTrip = null;
+        let markers = [];
+        let polyline = null;
+        let addTripModal = null;
+        let sidebarOpen = true;
+        let diagnosticOpen = false;
+        let bleDevice = null;
+        let bleServer = null;
+        let bleService = null;
+        let bleCharacteristic = null;
+        let diagnosticPollTimer = null;
+        let diagnosticReading = false;
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const bleServiceUuid = '19b10000-e8f2-537e-4f6c-d104768a1214';
+        const bleTextDecoder = new TextDecoder();
+        const bleTextEncoder = new TextEncoder();
+        const defaultNotifyCharacteristicUuid = '19b10001-e8f2-537e-4f6c-d104768a1214'; // set to your notify characteristic
+        // One characteristic per metric (fill in your device UUIDs)
+        const bleCharacteristicUuids = {
+            time:              '19b10001-e8f2-537e-4f6c-d104768a1214',
+            gpsFix:            '19b10002-e8f2-537e-4f6c-d104768a1214',
+            gpsSats:           '19b10003-e8f2-537e-4f6c-d104768a1214',
+            gpsSpeed:          '19b10004-e8f2-537e-4f6c-d104768a1214',
+
+            wifiStatus:        '19b10005-e8f2-537e-4f6c-d104768a1214',
+            wifiIp:            '19b10006-e8f2-537e-4f6c-d104768a1214',
+            wifiSignal:        '19b10007-e8f2-537e-4f6c-d104768a1214',
+
+            obdProtocol:       '19b10008-e8f2-537e-4f6c-d104768a1214',
+
+            uploadStage:       '19b10009-e8f2-537e-4f6c-d104768a1214',
+            uploadInProgress:  '19b1000a-e8f2-537e-4f6c-d104768a1214',
+            uploadCurrentIdx:  '19b1000b-e8f2-537e-4f6c-d104768a1214',
+            uploadFiles:       '19b1000c-e8f2-537e-4f6c-d104768a1214',
+
+            logStatus:         '19b1000d-e8f2-537e-4f6c-d104768a1214',
+
+            tripDistance:      '19b1000e-e8f2-537e-4f6c-d104768a1214',
+            tripPoints:        '19b1000f-e8f2-537e-4f6c-d104768a1214',
+            tripStartTs:       '19b10010-e8f2-537e-4f6c-d104768a1214',
+
+            carEngOn:          '19b10011-e8f2-537e-4f6c-d104768a1214',
+            carRpm:            '19b10012-e8f2-537e-4f6c-d104768a1214',
+            carKmph:           '19b10013-e8f2-537e-4f6c-d104768a1214',
+            carGpsKmph:        '19b10014-e8f2-537e-4f6c-d104768a1214',
+            carTemp:           '19b10015-e8f2-537e-4f6c-d104768a1214',
+            carFuel:           '19b10016-e8f2-537e-4f6c-d104768a1214',
+            carBatt:           '19b10017-e8f2-537e-4f6c-d104768a1214',
+            carLpg:            '19b10018-e8f2-537e-4f6c-d104768a1214',
+
+            ramFreeKb:         '19b10019-e8f2-537e-4f6c-d104768a1214',
+            ramTotalKb:        '19b1001a-e8f2-537e-4f6c-d104768a1214',
+            ramUsedPct:        '19b1001b-e8f2-537e-4f6c-d104768a1214'
+        };
+        const diagnosticPieces = {
+            time: null,
+            gpsFix: null,
+            gpsSats: null,
+            gpsSpeed: null,
+            wifiStatus: null,
+            ip: null,
+            signal: null,
+            obdProtocol: null,
+            uploadStage: null,
+            uploadInProgress: null,
+            uploadCurrentIdx: null,
+            uploadFiles: null,
+            logStatus: null,
+            tripDistance: null,
+            points: null,
+            startTs: null,
+            carEngOn: null,
+            rpm: null,
+            kmph: null,
+            gpsKmph: null,
+            temp: null,
+            fuel: null,
+            batt: null,
+            lpg: null,
+            ramFreeKb: null,
+            ramTotalKb: null,
+            ramUsedPct: null
+        };
+        const diagnosticData = {
+            time: '--',
+            gpsFix: '--',
+            gpsSats: '--',
+            gpsSpeed: '--',
+            wifi: '--',
+            ip: '--',
+            signal: '--',
+            obd: '--',
+            upload: '--',
+            log: '--',
+            car: '--',
+            batt: '--',
+            ram: '--'
+        };
+
+        // Initialize modal
+        document.addEventListener('DOMContentLoaded', function() {
+            addTripModal = new bootstrap.Modal(document.getElementById('addTripModal'));
+            
+            // Set default timestamps
+            const now = new Date();
+            const formattedDate = now.toISOString().slice(0, 16);
+            document.getElementById('start-timestamp').value = formattedDate;
+            document.getElementById('end-timestamp').value = formattedDate;
+
+            // Sidebar toggle
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            document.body.classList.toggle('sidebar-open', sidebarOpen);
+            toggleBtn.addEventListener('click', () => {
+                sidebarOpen = !sidebarOpen;
+                sidebar.classList.toggle('hidden', !sidebarOpen);
+                document.body.classList.toggle('sidebar-open', sidebarOpen);
+                setTimeout(() => map.invalidateSize(), 120);
+            });
+
+            // Diagnostics toggle
+            const diagnosticPanel = document.getElementById('diagnostic-panel');
+            const diagnosticToggle = document.getElementById('diagnostic-toggle');
+            diagnosticPanel.classList.add('hidden');
+            document.body.classList.toggle('diagnostic-open', diagnosticOpen);
+            diagnosticToggle.addEventListener('click', () => {
+                diagnosticOpen = !diagnosticOpen;
+                diagnosticPanel.classList.toggle('hidden', !diagnosticOpen);
+                document.body.classList.toggle('diagnostic-open', diagnosticOpen);
+                setTimeout(() => map.invalidateSize(), 120);
+            });
+
+            const btnConnect = document.getElementById('ble-connect-btn');
+            const btnDisconnect = document.getElementById('ble-disconnect-btn');
+            if (btnConnect) btnConnect.addEventListener('click', connectBle);
+            if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectBle);
+        });
+
+        // BLE Diagnostics Helpers
+        function setBleStatus(text, tone = 'secondary') {
+            const statusText = document.getElementById('ble-status-text');
+            const statusDot = document.getElementById('ble-status-dot');
+            const badge = document.getElementById('ble-connection-badge');
+            const toneClass = tone === 'warning' ? 'bg-warning text-dark' : `bg-${tone}`;
+
+            if (statusText) statusText.textContent = text;
+            if (statusDot) statusDot.className = `status-dot ${toneClass}`;
+            if (badge) badge.className = `badge ${toneClass}`;
+            if (badge) badge.textContent = text;
+        }
+
+        function logBle(message) {
+            const logEl = document.getElementById('ble-log');
+            if (!logEl) return;
+            const now = new Date().toLocaleTimeString();
+            const formatted = `[${now}] ${message}`;
+            if (logEl.textContent === 'Waiting for data...') {
+                logEl.textContent = '';
+            }
+            logEl.textContent += formatted + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function setBleControls({ connected = false, connecting = false } = {}) {
+            const connectBtn = document.getElementById('ble-connect-btn');
+            const disconnectBtn = document.getElementById('ble-disconnect-btn');
+            const sendBtn = document.getElementById('ble-send-btn');
+
+            if (connectBtn) connectBtn.disabled = connecting || connected;
+            if (disconnectBtn) disconnectBtn.disabled = !connected;
+            if (sendBtn) sendBtn.disabled = !connected;
+        }
+
+        async function connectBle() {
+            const serviceUuid = bleServiceUuid;
+            const characteristicUuid = defaultNotifyCharacteristicUuid;
+
+            if (!navigator.bluetooth) {
+                alert('Web Bluetooth API is not supported in this browser.');
+                return;
+            }
+            if (!serviceUuid || !characteristicUuid) {
+                alert('Please provide the Service UUID (and set notify UUID in code).');
+                return;
+            }
+
+            setBleStatus('Searching...', 'warning');
+            setBleControls({ connecting: true });
+
+            try {
+                const available = await navigator.bluetooth.getAvailability?.();
+                if (available === false) {
+                    alert('Bluetooth not available. On Android, enable Bluetooth and Location, and use Chrome.');
+                    setBleControls({ connected: false });
+                    setBleStatus('Disconnected', 'secondary');
+                    return;
+                }
+
+                if (!bleDevice) {
+                    // acceptAllDevices avoids "Not supported" when the service is not in advertisements
+                    const device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: [serviceUuid]
+                    });
+                    bleDevice = device;
+                    bleDevice.addEventListener('gattserverdisconnected', handleBleDisconnect);
+                }
+
+                // Reconnect if not connected
+                if (!bleDevice.gatt.connected) {
+                    bleServer = await bleDevice.gatt.connect();
+                } else {
+                    bleServer = bleDevice.gatt;
+                }
+
+                bleService = await bleServer.getPrimaryService(serviceUuid);
+
+                // Prefer explicit characteristic, else pick the first readable characteristic
+                try {
+                    bleCharacteristic = await bleService.getCharacteristic(characteristicUuid);
+                } catch (e) {
+                    const allChars = await bleService.getCharacteristics();
+                    bleCharacteristic = allChars.find(c => c.properties?.read) || allChars[0];
+                    logBle(`Readable characteristic fallback: ${bleCharacteristic?.uuid || 'none'}`);
+                }
+
+                document.getElementById('ble-device-name').textContent = bleDevice.name || 'Unnamed device';
+                setBleStatus('Connected', 'success');
+                setBleControls({ connected: true });
+                logBle('Connected to device');
+
+                // Attempt to read diagnostic values from individual characteristics (if UUIDs are set)
+                fetchDiagnosticsFromCharacteristics(serviceUuid);
+                startDiagnosticPolling(serviceUuid);
+            } catch (error) {
+                console.error('BLE connect error', error);
+                logBle(`Connection failed: ${error.message}`);
+                setBleStatus('Disconnected', 'secondary');
+                setBleControls({ connected: false });
+                // Drop cached service so next attempt re-requests
+                bleService = null;
+                bleCharacteristic = null;
+                stopDiagnosticPolling();
+            }
+        }
+
+        async function disconnectBle() {
+            try {
+                if (bleCharacteristic) {
+                    await bleCharacteristic.stopNotifications();
+                }
+            } catch (err) {
+                console.warn('Error stopping notifications', err);
+            }
+
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+
+            bleDevice = null;
+            bleCharacteristic = null;
+            bleServer = null;
+            bleService = null;
+            stopDiagnosticPolling();
+            document.getElementById('ble-device-name').textContent = 'None';
+            setBleStatus('Disconnected', 'secondary');
+            setBleControls({ connected: false });
+            logBle('Disconnected');
+        }
+
+        function handleBleDisconnect() {
+            logBle('Device disconnected');
+            setBleStatus('Disconnected', 'secondary');
+            setBleControls({ connected: false });
+            bleCharacteristic = null;
+            bleServer = null;
+            bleDevice = null;
+            bleService = null;
+            stopDiagnosticPolling();
+        }
+
+        async function sendBleCommand(command) {
+            if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) {
+                logBle('Not connected');
+                return;
+            }
+
+            const clean = (command || '').trim();
+            if (!clean) return;
+
+            try {
+                const data = bleTextEncoder.encode(clean + '\n');
+                if (bleCharacteristic.writeValueWithoutResponse) {
+                    await bleCharacteristic.writeValueWithoutResponse(data);
+                } else {
+                    await bleCharacteristic.writeValue(data);
+                }
+                logBle(`TX: ${clean}`);
+                const inputEl = document.getElementById('ble-send-input');
+                if (inputEl) inputEl.value = '';
+            } catch (error) {
+                console.error('Send error', error);
+                logBle(`Send failed: ${error.message}`);
+            }
+        }
+
+        // Parse and render diagnostic payloads (Random Nerd Tutorials style) from text content
+        function ingestDiagnosticText(text) {
+            if (!text || !text.includes('DEBUG DASHBOARD')) return;
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+            lines.forEach(line => {
+                if (line.startsWith('Time:')) {
+                    diagnosticPieces.time = line.replace('Time:', '').trim();
+                } else if (line.startsWith('GPS')) {
+                    diagnosticPieces.gpsFix = (line.match(/GPS\s*:\s*([^|]+)/i)?.[1] || '').trim();
+                    diagnosticPieces.gpsSats = line.match(/sats:([0-9]+)/i)?.[1] || diagnosticPieces.gpsSats;
+                    diagnosticPieces.gpsSpeed = line.match(/speed:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.gpsSpeed;
+                } else if (line.startsWith('WiFi')) {
+                    diagnosticPieces.wifiStatus = (line.match(/WiFi:\s*([^|]+)/i)?.[1] || '').trim();
+                    diagnosticPieces.ip = (line.match(/IP:([^|]+)/i)?.[1] || '').trim();
+                    diagnosticPieces.signal = line.match(/signal:([0-9]+%)/i)?.[1] || diagnosticPieces.signal;
+                } else if (line.startsWith('OBD')) {
+                    diagnosticPieces.obdProtocol = (line.match(/protocol:([\w-]*)/i)?.[1] || '').trim() || diagnosticPieces.obdProtocol;
+                } else if (line.startsWith('Upload')) {
+                    diagnosticPieces.uploadStage = line.match(/stage:([^|]+)/i)?.[1]?.trim() || diagnosticPieces.uploadStage;
+                    diagnosticPieces.uploadInProgress = line.match(/in_progress:([0-9]+)/i)?.[1] || diagnosticPieces.uploadInProgress;
+                    diagnosticPieces.uploadCurrentIdx = line.match(/current_idx:([-0-9]+)/i)?.[1] || diagnosticPieces.uploadCurrentIdx;
+                    diagnosticPieces.uploadFiles = line.match(/files:([0-9]+)/i)?.[1] || diagnosticPieces.uploadFiles;
+                } else if (line.startsWith('Log')) {
+                    diagnosticPieces.logStatus = line.match(/Log\s*:([^|]+)/i)?.[1]?.trim() || diagnosticPieces.logStatus;
+                    diagnosticPieces.tripDistance = line.match(/trip_dist:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.tripDistance;
+                    diagnosticPieces.points = line.match(/points:([0-9]+)/i)?.[1] || diagnosticPieces.points;
+                    diagnosticPieces.startTs = line.match(/start_ts:([0-9]+)/i)?.[1] || diagnosticPieces.startTs;
+                } else if (line.startsWith('Car')) {
+                    diagnosticPieces.carEngOn = line.match(/eng_on:([0-9]+)/i)?.[1] || diagnosticPieces.carEngOn;
+                    diagnosticPieces.rpm = line.match(/rpm:([0-9]+)/i)?.[1] || diagnosticPieces.rpm;
+                    diagnosticPieces.kmph = line.match(/kmph:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.kmph;
+                    diagnosticPieces.gpsKmph = line.match(/gps_kmph:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.gpsKmph;
+                    diagnosticPieces.temp = line.match(/temp:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.temp;
+                    diagnosticPieces.fuel = line.match(/fuel:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.fuel;
+                    diagnosticPieces.batt = line.match(/batt:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.batt;
+                    diagnosticPieces.lpg = line.match(/lpg:([0-9]+)/i)?.[1] || diagnosticPieces.lpg;
+                } else if (line.startsWith('RAM')) {
+                    diagnosticPieces.ramFreeKb = line.match(/([0-9.,]+)KB free/i)?.[1]?.replace(',', '.') || diagnosticPieces.ramFreeKb;
+                    diagnosticPieces.ramTotalKb = line.match(/([0-9.,]+)KB total/i)?.[1]?.replace(',', '.') || diagnosticPieces.ramTotalKb;
+                    diagnosticPieces.ramUsedPct = line.match(/\(([0-9]+)% used\)/i)?.[1] || diagnosticPieces.ramUsedPct;
+                }
+            });
+            composeDiagnosticData();
+            renderDiagnosticData();
+        }
+
+        function renderDiagnosticData() {
+            const mapVals = {
+                'diag-time': diagnosticData.time,
+                'diag-gps-fix': diagnosticData.gpsFix,
+                'diag-gps-sats': diagnosticData.gpsSats,
+                'diag-gps-speed': diagnosticData.gpsSpeed,
+                'diag-wifi': diagnosticData.wifi,
+                'diag-ip': diagnosticData.ip,
+                'diag-signal': diagnosticData.signal,
+                'diag-obd': diagnosticData.obd,
+                'diag-upload': diagnosticData.upload,
+                'diag-log': diagnosticData.log,
+                'diag-car': diagnosticData.car,
+                'diag-batt': diagnosticData.batt,
+                'diag-ram': diagnosticData.ram
+            };
+            Object.entries(mapVals).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.textContent = val || '--';
+                    // Blink the parent card when data changes
+                    const card = el.closest('.diag-card');
+                    if (card) {
+                        card.classList.remove('live-blink');
+                        void card.offsetWidth; // force reflow
+                        card.classList.add('live-blink');
+                        setTimeout(() => card.classList.remove('live-blink'), 400);
+                    }
+                }
+            });
+        }
+
+        // Read individual characteristics sequentially (one by one) and render
+        async function fetchDiagnosticsFromCharacteristics(serviceUuid) {
+            if (!bleService || diagnosticReading) return;
+            diagnosticReading = true;
+
+            const entries = [
+                ['time', bleCharacteristicUuids.time],
+                ['gpsFix', bleCharacteristicUuids.gpsFix],
+                ['gpsSats', bleCharacteristicUuids.gpsSats],
+                ['gpsSpeed', bleCharacteristicUuids.gpsSpeed],
+                ['wifiStatus', bleCharacteristicUuids.wifiStatus],
+                ['ip', bleCharacteristicUuids.wifiIp],
+                ['signal', bleCharacteristicUuids.wifiSignal],
+                ['obdProtocol', bleCharacteristicUuids.obdProtocol],
+                ['uploadStage', bleCharacteristicUuids.uploadStage],
+                ['uploadInProgress', bleCharacteristicUuids.uploadInProgress],
+                ['uploadCurrentIdx', bleCharacteristicUuids.uploadCurrentIdx],
+                ['uploadFiles', bleCharacteristicUuids.uploadFiles],
+                ['logStatus', bleCharacteristicUuids.logStatus],
+                ['tripDistance', bleCharacteristicUuids.tripDistance],
+                ['points', bleCharacteristicUuids.tripPoints],
+                ['startTs', bleCharacteristicUuids.tripStartTs],
+                ['carEngOn', bleCharacteristicUuids.carEngOn],
+                ['rpm', bleCharacteristicUuids.carRpm],
+                ['kmph', bleCharacteristicUuids.carKmph],
+                ['gpsKmph', bleCharacteristicUuids.carGpsKmph],
+                ['temp', bleCharacteristicUuids.carTemp],
+                ['fuel', bleCharacteristicUuids.carFuel],
+                ['batt', bleCharacteristicUuids.carBatt],
+                ['lpg', bleCharacteristicUuids.carLpg],
+                ['ramFreeKb', bleCharacteristicUuids.ramFreeKb],
+                ['ramTotalKb', bleCharacteristicUuids.ramTotalKb],
+                ['ramUsedPct', bleCharacteristicUuids.ramUsedPct]
+            ];
+
+            try {
+                for (const [key, uuid] of entries) {
+                    if (!uuid || !uuid.trim()) continue;
+                    try {
+                        const c = await bleService.getCharacteristic(uuid.trim());
+                        const v = await c.readValue();
+                        diagnosticPieces[key] = bleTextDecoder.decode(v).trim() ?? diagnosticPieces[key];
+                    } catch (err) {
+                        console.warn('Read failed for', key, uuid, err);
+                    }
+                }
+
+                composeDiagnosticData();
+                renderDiagnosticData();
+            } finally {
+                diagnosticReading = false;
+            }
+        }
+
+        function startDiagnosticPolling(serviceUuid) {
+            stopDiagnosticPolling();
+            diagnosticPollTimer = setInterval(() => {
+                if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+                    fetchDiagnosticsFromCharacteristics(serviceUuid);
+                }
+            }, 100);
+        }
+
+        function stopDiagnosticPolling() {
+            if (diagnosticPollTimer) {
+                clearInterval(diagnosticPollTimer);
+                diagnosticPollTimer = null;
+            }
+        }
+
+        function humanizeDiagnosticTime(value) {
+            if (!value) return 'N/A';
+            // If numeric epoch (seconds or ms), format to local string
+            const num = Number(value);
+            if (Number.isFinite(num)) {
+                const epochMs = num > 1e12 ? num : num * 1000;
+                const date = new Date(epochMs);
+                return isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+            }
+            // Try Date parseable string
+            const parsed = new Date(value);
+            if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
+            return String(value);
+        }
+
+        function composeDiagnosticData() {
+            diagnosticData.time = humanizeDiagnosticTime(diagnosticPieces.time || diagnosticData.time);
+            diagnosticData.gpsFix = diagnosticPieces.gpsFix || diagnosticData.gpsFix;
+            diagnosticData.gpsSats = diagnosticPieces.gpsSats || diagnosticData.gpsSats;
+            diagnosticData.gpsSpeed = diagnosticPieces.gpsSpeed ? `${diagnosticPieces.gpsSpeed} km/h` : diagnosticData.gpsSpeed;
+            diagnosticData.wifi = diagnosticPieces.wifiStatus || diagnosticData.wifi;
+            diagnosticData.ip = diagnosticPieces.ip || diagnosticData.ip;
+            diagnosticData.signal = diagnosticPieces.signal || diagnosticData.signal;
+            diagnosticData.obd = diagnosticPieces.obdProtocol || diagnosticData.obd;
+
+            const upStage = diagnosticPieces.uploadStage;
+            const upProg = diagnosticPieces.uploadInProgress;
+            const upIdx = diagnosticPieces.uploadCurrentIdx;
+            const upFiles = diagnosticPieces.uploadFiles;
+            if (upStage || upProg || upIdx || upFiles) {
+                diagnosticData.upload = `Stage ${upStage ?? '-'} | in_progress ${upProg ?? '-'} | idx ${upIdx ?? '-'} | files ${upFiles ?? '-'}`;
+            }
+
+            const logStatus = diagnosticPieces.logStatus;
+            const tripDist = diagnosticPieces.tripDistance;
+            const points = diagnosticPieces.points;
+            const startTs = diagnosticPieces.startTs;
+            if (logStatus || tripDist || points || startTs) {
+                diagnosticData.log = `${logStatus ?? '-'} | dist ${tripDist ?? '-'} km | points ${points ?? '-'} | start ${startTs ?? '-'}`;
+            }
+
+            const car = diagnosticPieces;
+            if (car.rpm || car.kmph || car.gpsKmph || car.temp || car.fuel || car.lpg || car.carEngOn) {
+                diagnosticData.car = `eng:${car.carEngOn ?? '-'} rpm:${car.rpm ?? '-'} kmph:${car.kmph ?? '-'} gps:${car.gpsKmph ?? '-'} temp:${car.temp ?? '-'}C fuel:${car.fuel ?? '-'}% lpg:${car.lpg ?? '-'}`;
+            }
+            if (car.batt) diagnosticData.batt = `${car.batt} V`;
+
+            if (car.ramFreeKb || car.ramTotalKb || car.ramUsedPct) {
+                diagnosticData.ram = `${car.ramFreeKb ?? '-'}KB / ${car.ramTotalKb ?? '-'}KB (${car.ramUsedPct ?? '-'}% used)`;
+            }
+        }
+        // Authentication State Listener
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is signed in
+                console.log("User signed in:", user.email);
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('signup-container').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'flex'; // ensure flex layout
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('user-email').textContent = user.email;
+                setTimeout(() => map.invalidateSize(), 100); // ensure map renders after layout
+                
+                // Load trips now that we're authenticated
+                loadTrips();
+            } else {
+                // User is signed out
+                console.log("User signed out");
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('dashboard-content').style.display = 'none';
+                document.getElementById('user-info').style.display = 'none';
+                document.getElementById('signup-container').style.display = 'none';
+            }
+        });
+
+        // Auth Form Handling
+        document.getElementById('auth-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            
+            const authSpinner = document.getElementById('auth-spinner');
+            authSpinner.style.display = 'inline-block';
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    document.getElementById('auth-error').style.display = 'none';
+                })
+                .catch((error) => {
+                    showAuthError(error.message);
+                })
+                .finally(() => {
+                    authSpinner.style.display = 'none';
+                });
+        });
+
+        // Sign Up Form Handling
+        document.getElementById('signup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirm = document.getElementById('signup-confirm').value;
+            
+            if (password !== confirm) {
+                showSignupError("Passwords don't match");
+                return;
+            }
+            
+            const signupSpinner = document.getElementById('signup-spinner');
+            signupSpinner.style.display = 'inline-block';
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    document.getElementById('signup-error').style.display = 'none';
+                })
+                .catch((error) => {
+                    showSignupError(error.message);
+                })
+                .finally(() => {
+                    signupSpinner.style.display = 'none';
+                });
+        });
+
+        // Sign Out Button
+        document.getElementById('sign-out-btn').addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Switch between auth forms
+        document.getElementById('switch-to-signup').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('signup-container').style.display = 'block';
+            document.getElementById('signup-error').style.display = 'none';
+        });
+
+        document.getElementById('switch-to-signin').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('signup-container').style.display = 'none';
+            document.getElementById('auth-container').style.display = 'block';
+            document.getElementById('auth-error').style.display = 'none';
+        });
+
+        // Add Trip Button
+        document.getElementById('add-trip-btn').addEventListener('click', () => {
+            addTripModal.show();
+        });
+
+        // Save Trip Button
+        document.getElementById('save-trip').addEventListener('click', saveTrip);
+
+        // Helper functions
+        function showAuthError(message) {
+            const errorElement = document.getElementById('auth-error');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function showSignupError(message) {
+            const errorElement = document.getElementById('signup-error');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        // Load trips from Firebase
+        // function loadTrips() {
+        //     const user = auth.currentUser;
+        //     if (!user) return;
+
+        //     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
+        //     tripsRef.on('value', (snapshot) => {
+        //         trips = [];
+                
+        //         if (!snapshot.exists()) {
+        //             console.log("No trips found for user");
+        //             renderTrips();
+        //             return;
+        //         }
+
+        //         const data = snapshot.val();
+        //         console.log("Trips data:", data);
+
+        //         if (data) {
+        //             Object.keys(data).forEach(key => {
+        //                 trips.push({ 
+        //                     id: key, 
+        //                     ...data[key]
+        //                 });
+        //             });
+                    
+        //             // Sort trips by start timestamp (newest first)
+        //             trips.sort((a, b) => b.start_timestamp - a.start_timestamp);
+        //         }
+
+        //         renderTrips();
+        //         updateStats();
+        //     }, (error) => {
+        //         console.error("Error loading trips:", error);
+        //         document.getElementById('trips-list').innerHTML = `
+        //             <div class="alert alert-danger">
+        //                 Error loading trips: ${error.message}
+        //             </div>
+        //         `;
+        //     });
+        // }
+
+        function loadTrips() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
+            tripsRef.on('value', (snapshot) => {
+                trips = [];
+                
+                if (!snapshot.exists()) {
+                    console.log("No trips found for user");
+                    renderTrips();
+                    return;
+                }
+
+                const data = snapshot.val();
+                console.log("RAW TRIPS DATA:", data); // Debug log
+                
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        trips.push({ 
+                            id: key, 
+                            ...data[key]
+                        });
+                        console.log(`Trip ${key} locations:`, data[key].trip_locations); // Debug each trip
+                    });
+                    
+                    trips.sort((a, b) => b.start_timestamp - a.start_timestamp);
+                }
+
+                renderTrips();
+                updateStats();
+            });
+        }
+
+        
+
+        // Format timestamp for Firebase
+        function formatFirebaseTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}:${pad(date.getHours())}.${pad(date.getMinutes())}.${pad(date.getSeconds())}`;
+        }
+
+        function pad(num) {
+            return num.toString().padStart(2, '0');
+        }
+
+        // Render trips list
+        function renderTrips() {
+            const tripsList = document.getElementById('trips-list');
+            const tripCount = document.getElementById('trip-count');
+            
+            if (trips.length === 0) {
+                tripsList.innerHTML = '<p>No trips found. Add your first trip!</p>';
+                tripCount.textContent = '0 trips total';
+                return;
+            }
+            
+            tripCount.textContent = `${trips.length} trips total`;
+            
+            // tripsList.innerHTML = trips.map(trip => `
+            //     <div class="card trip-card mb-2 ${selectedTrip?.id === trip.id ? 'active-trip' : ''}" data-id="${trip.id}">
+            //         <div class="card-body">
+            //             <h5 class="card-title">${trip.name || formatTripId(trip.id)}</h5>
+            //             <p class="card-text">
+            //                 <strong>Duration:</strong> ${formatDuration(trip['trip duration'])}<br>
+            //                 <strong>Distance:</strong> ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}<br>
+            //                 <strong>Top Speed:</strong> ${trip.top_speed || 0} km/h<br>
+            //                 <strong>Time:</strong> ${formatTimestamp(trip.start_timestamp)} - ${formatTimestamp(trip.end_timestamp)}
+            //             </p>
+            //         </div>
+            //     </div>
+            // `).join('');
+            // Update the trip card HTML in your renderTrips() function
+            tripsList.innerHTML = trips.map(trip => `
+                <div class="card trip-card mb-2 ${selectedTrip?.id === trip.id ? 'active-trip' : ''}" data-id="${trip.id}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title">${trip.name || formatTripId(trip.id)}</h5>
+                                <p class="card-text">
+                                    <strong>Duration:</strong> ${formatDuration(trip.trip_duration || trip['trip duration'])}<br>
+                                    <strong>Distance:</strong> ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}<br>
+                                    <strong>Top Speed:</strong> ${trip.top_speed || 0} km/h
+                                </p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger delete-trip" data-id="${trip.id}">
+                                Delete
+                            </button>
+                        </div>
+                        <div class="text-muted small">
+                            ${formatTimestamp(trip.start_timestamp)} - ${formatTimestamp(trip.end_timestamp)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add click event listeners
+            document.querySelectorAll('.trip-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const tripId = this.getAttribute('data-id');
+                    selectTrip(tripId);
+                });
+            });
+
+            // Add this at the end of your renderTrips() function
+            document.querySelectorAll('.delete-trip').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent triggering the trip selection
+                    const tripId = this.getAttribute('data-id');
+                    deleteTrip(tripId);
+                });
+            });
+        }
+
+        // Add this function with your other functions
+        function deleteTrip(tripId) {
+            if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const tripRef = database.ref(`/UsersData/${user.uid}/trips/${tripId}`);
+            
+            // Show loading state on the delete button
+            const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+            deleteBtn.disabled = true;
+
+            tripRef.remove()
+                .then(() => {
+                    console.log('Trip deleted successfully');
+                    // If we deleted the currently selected trip, clear the selection
+                    if (selectedTrip && selectedTrip.id === tripId) {
+                        selectedTrip = null;
+                        document.getElementById('trip-details').style.display = 'none';
+                        // Clear map
+                        markers.forEach(marker => map.removeLayer(marker));
+                        markers = [];
+                        if (polyline) {
+                            map.removeLayer(polyline);
+                            polyline = null;
+                        }
+                        map.setView([0, 0], 2);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting trip:', error);
+                    alert('Failed to delete trip: ' + error.message);
+                })
+                .finally(() => {
+                    // Restore button state even if we're about to remove the card
+                    if (deleteBtn) {
+                        deleteBtn.innerHTML = originalText;
+                        deleteBtn.disabled = false;
+                    }
+                });
+        }
+        
+        // Format trip ID for display
+        function formatTripId(id) {
+            return id.replace(/_/g, ' ').replace(/__/g, ':');
+        }
+        
+        // Select a trip to display on map
+        // function selectTrip(tripId) {
+        //     selectedTrip = trips.find(trip => trip.id === tripId);
+            
+        //     // Highlight selected trip
+        //     document.querySelectorAll('.trip-card').forEach(card => {
+        //         if (card.getAttribute('data-id') === tripId) {
+        //             card.classList.add('active-trip');
+        //         } else {
+        //             card.classList.remove('active-trip');
+        //         }
+        //     });
+            
+        //     // Show trip details
+        //     document.getElementById('trip-details').style.display = 'block';
+        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
+        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip['trip duration']);
+        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
+        //     document.getElementById('locations-count').textContent = selectedTrip.trip_locations_count || 0;
+        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
+        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
+            
+        //     // Clear existing markers and polyline
+        //     markers.forEach(marker => map.removeLayer(marker));
+        //     markers = [];
+        //     if (polyline) {
+        //         map.removeLayer(polyline);
+        //     }
+            
+        //     // Filter out null locations and locations with (0,0) coordinates
+        //     const validLocations = (selectedTrip.trip_locations || [])
+        //         .filter(loc => loc && (loc.lat !== 0 || loc.log !== 0));
+            
+        //     if (validLocations.length > 0) {
+        //         // Create array of coordinates for polyline
+        //         const coordinates = validLocations.map(loc => [loc.lat, loc.log]);
+                
+        //         // Add markers for each location
+        //         validLocations.forEach((location, index) => {
+        //             const marker = L.marker([location.lat, location.log]).addTo(map)
+        //                 .bindPopup(`
+        //                     <b>Point ${index + 1}</b><br>
+        //                     Time: ${location.time_string || formatTimestamp(location.time)}<br>
+        //                     Speed: ${location.speed || 0} km/h<br>
+        //                     RPM: ${location.rpm || 0}<br>
+        //                     Consumption: ${location.consumption?.lps || 0} lps
+        //                 `);
+        //             markers.push(marker);
+        //         });
+                
+        //         // Draw the route
+        //         polyline = L.polyline(coordinates, {color: 'blue'}).addTo(map);
+                
+        //         // Fit map to show the entire route
+        //         map.fitBounds(polyline.getBounds());
+        //     } else {
+        //         // No valid coordinates - show message
+        //         map.setView([0, 0], 2);
+        //         L.popup()
+        //             .setLatLng([0, 0])
+        //             .setContent('No valid location data for this trip')
+        //             .openOn(map);
+        //     }
+        // }
+        
+        // function selectTrip(tripId) {
+        //     selectedTrip = trips.find(trip => trip.id === tripId);
+            
+        //     // Highlight selected trip
+        //     document.querySelectorAll('.trip-card').forEach(card => {
+        //         card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
+        //     });
+            
+        //     // Show trip details
+        //     document.getElementById('trip-details').style.display = 'block';
+        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
+        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip['trip duration']);
+        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
+        //     document.getElementById('locations-count').textContent = selectedTrip.trip_locations_count || 0;
+        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
+        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
+            
+        //     // Clear existing markers and polyline
+        //     markers.forEach(marker => map.removeLayer(marker));
+        //     markers = [];
+        //     if (polyline) {
+        //         map.removeLayer(polyline);
+        //     }
+            
+        //     // Check if trip_locations exists and is an array
+        //     if (!selectedTrip.trip_locations || !Array.isArray(selectedTrip.trip_locations)) {
+        //         console.log("Trip locations not exists or not array");
+        //         showNoLocationData();
+        //         return;
+        //     }
+            
+        //     // Process locations - handle different coordinate property names
+        //     const validLocations = selectedTrip.trip_locations
+        //         .filter(loc => loc && !isNullIsland(loc))
+        //         .map(normalizeLocation);
+        //     // console.log(validLocations);
+        //     if (validLocations.length > 0) {
+        //         plotLocationsOnMap(validLocations);
+        //     } else {
+        //         console.log("Trip locations length < 0");
+        //         showNoLocationData();
+        //     }
+        // }
+
+        function selectTrip(tripId) {
+            selectedTrip = trips.find(trip => trip.id === tripId);
+            
+            if (!selectedTrip) {
+                console.error("Trip not found:", tripId);
+                return;
+            }
+
+            console.log("Selected Trip Data:", selectedTrip); // Debug log
+
+            // Highlight selected trip UI
+            document.querySelectorAll('.trip-card').forEach(card => {
+                card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
+            });
+            
+            // Show trip details
+            document.getElementById('trip-details').style.display = 'block';
+            document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
+            document.getElementById('trip-duration').textContent = formatDuration(selectedTrip.trip_duration || selectedTrip['trip duration']);
+            document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
+            document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
+            document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
+            
+            // Clear existing map elements
+            clearMap();
+            
+            // Process and display locations
+            const validLocations = processTripLocations(selectedTrip);
+            document.getElementById('locations-count').textContent = (validLocations?.length || selectedTrip.trip_locations_count || 0);
+
+            // Auto-hide sidebar on smaller screens after selection
+            if (window.innerWidth <= 1024) {
+                hideSidebar();
+            }
+        }
+
+        function clearMap() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            if (polyline) {
+                map.removeLayer(polyline);
+                polyline = null;
+            }
+        }
+
+        function processTripLocations(trip) {
+            const locationsArray = Array.isArray(trip.trip_locations)
+                ? trip.trip_locations
+                : (trip.trip_locations ? Object.values(trip.trip_locations) : []);
+
+            if (locationsArray.length === 0) {
+                console.error("No valid trip_locations array found");
+                showNoLocationData();
+                return [];
+            }
+
+            console.log("Raw locations data:", locationsArray);
+
+            const validLocations = locationsArray
+                .filter(loc => loc !== null && loc !== undefined)
+                .map(normalizeLocation)
+                .filter(hasValidCoordinates);
+
+            console.log("Processed locations:", validLocations);
+
+            if (validLocations.length > 0) {
+                plotLocationsOnMap(validLocations);
+            } else {
+                console.error("No valid locations after filtering");
+                showNoLocationData();
+            }
+
+            return validLocations;
+        }
+
+        function hasValidCoordinates(location) {
+            const lat = getLatitude(location);
+            const lng = getLongitude(location);
+            
+            // Check for null island (0,0) and valid ranges
+            return lat !== null && lng !== null && 
+                !(lat === 0 && lng === 0) &&
+                Number.isFinite(lat) && Number.isFinite(lng) &&
+                lat >= -90 && lat <= 90 &&
+                lng >= -180 && lng <= 180;
+        }
+
+        function normalizeLocation(location) {
+            const lat = getLatitude(location);
+            const lng = getLongitude(location);
+            const consumption = location.lpkm ?? location.consumption?.lps ?? location.consumption?.current_consumption_l ?? null;
+
+            return {
+                lat,
+                lng,
+                time: location.time ?? location.timestamp ?? null,
+                time_string: location.time_string ?? null,
+                speed: location.speed ?? 0,
+                rpm: location.rpm ?? 0,
+                lpg: location.lpg ?? null,
+                consumption
+            };
+        }
+
+        function getLatitude(loc) {
+            if (loc.lat !== undefined && loc.lat !== null) return parseFloat(loc.lat);
+            if (loc.latitude !== undefined && loc.latitude !== null) return parseFloat(loc.latitude);
+            if (loc.position?.lat !== undefined && loc.position?.lat !== null) return parseFloat(loc.position.lat);
+            if (loc.Lat !== undefined && loc.Lat !== null) return parseFloat(loc.Lat);
+            return null;
+        }
+
+        function getLongitude(loc) {
+            if (loc.lng !== undefined && loc.lng !== null) return parseFloat(loc.lng);
+            if (loc.lon !== undefined && loc.lon !== null) return parseFloat(loc.lon);
+            if (loc.log !== undefined && loc.log !== null) return parseFloat(loc.log);
+            if (loc.longitude !== undefined && loc.longitude !== null) return parseFloat(loc.longitude);
+            if (loc.position?.lng !== undefined && loc.position?.lng !== null) return parseFloat(loc.position.lng);
+            if (loc.Lng !== undefined && loc.Lng !== null) return parseFloat(loc.Lng);
+            return null;
+        }
+
+        function plotLocationsOnMap(locations) {
+            const layerParts = [];
+            const startIcon = L.divIcon({ className: 'start-icon' });
+            const endIcon = L.divIcon({ className: 'end-icon' });
+
+            // Use circles for intermediate points, start/end icons for endpoints
+            locations.forEach((location, index) => {
+                const isFirst = index === 0;
+                const isLast = index === locations.length - 1;
+                const color = getSpeedColor(location.speed);
+                const speedDisplay = formatSpeed(location.speed);
+                const consumptionDisplay = formatConsumption(location.consumption);
+                const popupContent = `
+                        <b>Point ${index + 1}</b><br>
+                        Time: ${location.time_string || formatTimestamp(location.time)}<br>
+                        Speed: ${speedDisplay}<br>
+                        RPM: ${location.rpm || 0}<br>
+                        Consumption: ${consumptionDisplay}
+                    `;
+
+                let marker;
+                if (isFirst) {
+                    marker = L.marker([location.lat, location.lng], { icon: startIcon }).addTo(map);
+                } else if (isLast) {
+                    marker = L.marker([location.lat, location.lng], { icon: endIcon }).addTo(map);
+                } else {
+                    marker = L.circleMarker([location.lat, location.lng], {
+                        radius: 6,
+                        color,
+                        fillColor: color,
+                        fillOpacity: 0.7,
+                        weight: 1
+                    }).addTo(map);
+                }
+
+                marker.bindTooltip(popupContent, { direction: 'top', sticky: true, opacity: 0.9 });
+                markers.push(marker);
+                layerParts.push(marker);
+            });
+
+            // Build colored segments based on speed (0-200 km/h scale)
+            const segments = [];
+            for (let i = 1; i < locations.length; i++) {
+                const start = locations[i - 1];
+                const end = locations[i];
+                const segmentSpeed = start.speed ?? 0; // approximate speed for segment
+                const segmentColor = getSpeedColor(segmentSpeed);
+                const segment = L.polyline(
+                    [[start.lat, start.lng], [end.lat, end.lng]],
+                    { color: segmentColor, weight: 4, opacity: 0.85 }
+                ).addTo(map);
+                segments.push(segment);
+                layerParts.push(segment);
+            }
+
+            polyline = segments.length ? L.layerGroup(segments).addTo(map) : null;
+
+            focusMapOnLocations(layerParts);
+        }
+
+        function getSpeedColor(speed) {
+            const value = Number.isFinite(speed) ? speed : 0;
+            const clamped = Math.max(0, Math.min(200, value));
+            // Green (120) to Red (0) over 0-200 km/h
+            const hue = 120 - (clamped / 200) * 120;
+            return `hsl(${hue}, 80%, 50%)`;
+        }
+
+        function focusMapOnLocations(layers) {
+            if (!layers || layers.length === 0) return;
+            const group = L.featureGroup(layers);
+            const bounds = group.getBounds();
+            if (bounds.isValid()) {
+                map.invalidateSize(); // ensure container is sized before fitting
+                if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+                    map.setView(bounds.getCenter(), 15); // single point
+                } else {
+                    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
+                }
+            }
+        }
+
+        function formatSpeed(speed) {
+            if (speed === undefined || speed === null || Number.isNaN(Number(speed))) return '0 km/h';
+            return `${Math.round(Number(speed))} km/h`;
+        }
+
+        function formatConsumption(consumption) {
+            if (consumption === undefined || consumption === null || Number.isNaN(Number(consumption))) return 'N/A';
+            return `${Number(consumption).toFixed(1)} L/km`;
+        }
+
+        function showSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            sidebarOpen = true;
+            sidebar.classList.remove('hidden');
+            document.body.classList.add('sidebar-open');
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        function hideSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+            sidebarOpen = false;
+            sidebar.classList.add('hidden');
+            document.body.classList.remove('sidebar-open');
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        function showNoLocationData() {
+            map.setView([0, 0], 2);
+            L.popup()
+                .setLatLng([0, 0])
+                .setContent('No valid location data for this trip')
+                .openOn(map);
+        }
+                
+        // Update statistics
+        function updateStats() {
+            document.getElementById('total-trips').textContent = trips.length;
+            
+            const totalDistance = trips.reduce((sum, trip) => sum + (trip.trip_distance || 0), 0);
+            document.getElementById('total-distance').textContent = `${totalDistance.toFixed(2)} km`;
+            
+            const totalSeconds = trips.reduce((sum, trip) => sum + (trip.trip_duration || trip['trip duration'] || 0), 0);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            document.getElementById('total-time').textContent = `${hours > 0 ? hours + 'h ' : ''}${minutes}m`;
+            
+            // Calculate average speed (distance km / time hours)
+            const totalHours = totalSeconds / 3600;
+            const avgSpeed = totalHours > 0 ? (totalDistance / totalHours) : 0;
+            document.getElementById('avg-speed').textContent = `${avgSpeed.toFixed(1)} km/h`;
+        }
+        
+        // Format timestamp for display
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString();
+        }
+        
+        // Format duration for display
+        function formatDuration(seconds) {
+            if (!seconds) return 'N/A';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours > 0 ? hours + 'h ' : ''}${minutes > 0 || hours > 0 ? minutes + 'm ' : ''}${secs}s`;
+        }
+    </script>
+</body>
+</html>
