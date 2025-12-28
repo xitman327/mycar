@@ -630,6 +630,91 @@
     <script>
 
         const API_BASE = 'http://mynas.xitos.uk:1880/endpoint/api';
+
+
+        let loginRequested = false;
+
+function showLoginRequired(message = 'Login required') {
+  // Create overlay once
+  let overlay = document.getElementById('login-required-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'login-required-overlay';
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.45);
+      display:flex; align-items:center; justify-content:center;
+      z-index:99999; padding:16px;`;
+    overlay.innerHTML = `
+      <div style="max-width:420px; width:100%; background:#fff; border-radius:12px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+        <h4 style="margin:0 0 8px 0;">Authentication required</h4>
+        <div id="login-required-msg" style="color:#444; margin-bottom:12px;"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="btn-login-now" class="btn btn-primary btn-sm">Login</button>
+          <button id="btn-reload" class="btn btn-outline-secondary btn-sm">Reload</button>
+        </div>
+        <div style="margin-top:10px; font-size:12px; color:#666;">
+          This uses Node-RED's built-in authentication prompt.
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#btn-reload').addEventListener('click', () => location.reload());
+
+    overlay.querySelector('#btn-login-now').addEventListener('click', () => {
+      // Hit a protected endpoint to trigger the browser auth prompt.
+      // Pick the lightest endpoint you already have (e.g. /api/trips).
+      // Open in same tab to ensure credentials apply to this origin.
+      window.location.href = '/endpoint/api/trips';
+    });
+  }
+
+  overlay.querySelector('#login-required-msg').textContent = message;
+  overlay.style.display = 'flex';
+}
+
+async function apiFetch(url, options = {}) {
+  try {
+    const res = await fetch(url, { ...options, credentials: 'include' });
+
+    // If we got a real HTTP response, we can handle auth
+    if (res.status === 401 || res.status === 403) {
+      showLoginRequired(`Node-RED authentication required (${res.status}). Click Login.`);
+      throw new Error(`AUTH_REQUIRED_${res.status}`);
+    }
+
+    // Helpful debug for unexpected responses
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP_${res.status} ${res.statusText} ${text.slice(0,200)}`);
+    }
+
+    return res;
+  } catch (err) {
+    // This is where "Failed to fetch" lands
+    console.error('apiFetch failed:', err);
+    const hint = diagnoseFetchFailure(url, err);
+    showLoginRequired(hint); // Reuse overlay to show the hint
+    throw err;
+  }
+}
+
+function diagnoseFetchFailure(url, err) {
+  const u = new URL(url, window.location.href);
+  const here = window.location;
+
+  // Common causes
+  if (here.protocol === 'https:' && u.protocol === 'http:') {
+    return `Blocked mixed content: page is HTTPS but API is HTTP (${u.href}). Serve both over HTTPS or call a same-origin HTTPS endpoint.`;
+  }
+  if (here.origin !== u.origin) {
+    return `Cross-origin request blocked or unreachable.\nPage origin: ${here.origin}\nAPI origin: ${u.origin}\nUse a same-origin relative URL like /endpoint/api/trips, or enable CORS on the server.`;
+  }
+  if (here.protocol === 'file:') {
+    return `You opened the page as file://. Browsers will block or restrict requests.\nServe the page from Node-RED/Home Assistant so origin matches the API.`;
+  }
+  return `Request to ${u.href} failed before any HTTP response.\nLikely wrong host/port/path, CORS, proxy/ingress mismatch, or server is not reachable.\nOpen DevTools → Network for the exact reason.`;
+}
+
         // Initialize map
         let map = L.map('map', {
             scrollWheelZoom: true,  // Disable scroll wheel zoom
@@ -868,7 +953,7 @@ function renderPositionList() {
         };
 
         try {
-            const r = await fetch(`${API_BASE}/trips`, {
+            const r = await apiFetch(`${API_BASE}/trips`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newTrip)
@@ -1515,7 +1600,7 @@ function renderPositionList() {
 
         async function loadTrips() {
             try {
-                const r = await fetch(`${API_BASE}/trips`);
+                const r = await apiFetch(`${API_BASE}/trips`);
                 if (!r.ok) throw new Error(await r.text());
                 trips = await r.json();
                 renderTrips();
@@ -1669,7 +1754,7 @@ function renderPositionList() {
             }
 
             try {
-                const r = await fetch(`${API_BASE}/trips/${tripId}`, { method: 'DELETE' });
+                const r = await apiFetch(`${API_BASE}/trips/${tripId}`, { method: 'DELETE' });
                 if (!r.ok) throw new Error(await r.text());
 
                 // if current selected, clear
