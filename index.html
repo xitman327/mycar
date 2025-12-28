@@ -626,34 +626,10 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
     
     <script>
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDjB8_JWiNeGSYDhzXQuZ1AAQHsVCOXLeA",
-            authDomain: "carlogger-a6de5.firebaseapp.com",
-            databaseURL: "https://carlogger-a6de5-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "carlogger-a6de5",
-            storageBucket: "carlogger-a6de5.firebasestorage.app",
-            messagingSenderId: "77433139179",
-            appId: "1:77433139179:web:8e93e3d7fa7364dab7f3ae"
-        };
-        
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const auth = firebase.auth();
-        
-        // // Initialize map
-        // let map = L.map('map', {scrollWheelZoom: false}).setView([0, 0], 2);
-        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        //     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        // }).addTo(map);
 
+        const API_BASE = 'http://mynas.xitos.uk:1880/endpoint/api';
         // Initialize map
         let map = L.map('map', {
             scrollWheelZoom: true,  // Disable scroll wheel zoom
@@ -813,54 +789,121 @@ function renderPositionList() {
 }
 
 // Update your saveTrip function to include positions
-function saveTrip() {
-    const user = auth.currentUser;
-    if (!user) return;
+// function saveTrip() {
+//     const user = auth.currentUser;
+//     if (!user) return;
 
-    const tripName = document.getElementById('trip-name').value;
-    const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
-    const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
-    const distance = parseFloat(document.getElementById('trip-distance').value);
-    const topSpeed = parseInt(document.getElementById('top-speed-input').value);
+//     const tripName = document.getElementById('trip-name').value;
+//     const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
+//     const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
+//     const distance = parseFloat(document.getElementById('trip-distance').value);
+//     const topSpeed = parseInt(document.getElementById('top-speed-input').value);
 
-    if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
-        alert("Please fill all required fields with valid values");
-        return;
-    }
+//     if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
+//         alert("Please fill all required fields with valid values");
+//         return;
+//     }
 
-    const saveSpinner = document.getElementById('save-spinner');
-    saveSpinner.style.display = 'inline-block';
+//     const saveSpinner = document.getElementById('save-spinner');
+//     saveSpinner.style.display = 'inline-block';
 
-    const newTrip = {
-        name: tripName,
-        start_timestamp: startTimestamp,
-        end_timestamp: endTimestamp,
-        start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
-        end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
-        trip_distance: distance,
-        top_speed: topSpeed,
-        'trip_duration': endTimestamp - startTimestamp,
-        trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
-        trip_locations_count: positionCoordinates.length
-    };
+//     const newTrip = {
+//         name: tripName,
+//         start_timestamp: startTimestamp,
+//         end_timestamp: endTimestamp,
+//         start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
+//         end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
+//         trip_distance: distance,
+//         top_speed: topSpeed,
+//         'trip_duration': endTimestamp - startTimestamp,
+//         trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
+//         trip_locations_count: positionCoordinates.length
+//     };
 
-    const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
-    tripsRef.push(newTrip)
-        .then(() => {
+//     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
+//     tripsRef.push(newTrip)
+//         .then(() => {
+//             document.getElementById('trip-form').reset();
+//             positionCoordinates = [];
+//             positionMarkers = [];
+//             document.getElementById('positions-container').innerHTML = '';
+//             addTripModal.hide();
+//         })
+//         .catch(error => {
+//             console.error("Error saving trip:", error);
+//             alert("Error saving trip: " + error.message);
+//         })
+//         .finally(() => {
+//             saveSpinner.style.display = 'none';
+//         });
+// }
+
+    async function saveTrip() {
+        const tripName = document.getElementById('trip-name').value;
+
+        const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
+        const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
+        const distance = parseFloat(document.getElementById('trip-distance').value);
+        const topSpeed = parseInt(document.getElementById('top-speed-input').value);
+
+        if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
+            alert("Please fill all required fields with valid values");
+            return;
+        }
+
+        const saveSpinner = document.getElementById('save-spinner');
+        saveSpinner.style.display = 'inline-block';
+
+        const newTrip = {
+            name: tripName,
+            start_timestamp: startTimestamp,
+            end_timestamp: endTimestamp,
+            start_timestamp_string: formatEpochFilenameLocal(startTimestamp),
+            end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
+            trip_distance: distance,
+            top_speed: topSpeed,
+            trip_duration: endTimestamp - startTimestamp,
+            trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
+            trip_locations_count: positionCoordinates.length
+        };
+
+        try {
+            const r = await fetch(`${API_BASE}/trips`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newTrip)
+            });
+
+            if (r.status === 409) {
+            const body = await r.json().catch(() => null);
+            alert(`Trip already exists (${body?.id || newTrip.start_timestamp_string}).`);
+            return;
+            }
+
+            if (!r.ok) throw new Error(await r.text());
+
             document.getElementById('trip-form').reset();
             positionCoordinates = [];
             positionMarkers = [];
             document.getElementById('positions-container').innerHTML = '';
             addTripModal.hide();
-        })
-        .catch(error => {
-            console.error("Error saving trip:", error);
-            alert("Error saving trip: " + error.message);
-        })
-        .finally(() => {
+
+            await loadTrips();
+        } catch (e) {
+            console.error("Error saving trip:", e);
+            alert("Error saving trip: " + e.message);
+        } finally {
             saveSpinner.style.display = 'none';
-        });
-}
+        }
+        }
+
+        // filename format: YYYY-MM-DD_HH-MM-SS (local time)
+        function formatEpochFilenameLocal(tsSec) {
+        const d = new Date(tsSec * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+        }
+
 
 // Save new trip to Firebase
         // function saveTrip() {
@@ -1010,6 +1053,15 @@ function saveTrip() {
             batt: '--',
             ram: '--'
         };
+
+        // No auth in Node-RED mode
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('signup-container').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'flex';
+        document.getElementById('user-info').style.display = 'none';
+
+        // Load trips immediately
+        loadTrips();
 
         // Initialize modal
         document.addEventListener('DOMContentLoaded', function() {
@@ -1417,97 +1469,6 @@ function saveTrip() {
                 diagnosticData.ram = `${car.ramFreeKb ?? '-'}KB / ${car.ramTotalKb ?? '-'}KB (${car.ramUsedPct ?? '-'}% used)`;
             }
         }
-        // Authentication State Listener
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // User is signed in
-                console.log("User signed in:", user.email);
-                document.getElementById('auth-container').style.display = 'none';
-                document.getElementById('signup-container').style.display = 'none';
-                document.getElementById('dashboard-content').style.display = 'flex'; // ensure flex layout
-                document.getElementById('user-info').style.display = 'block';
-                document.getElementById('user-email').textContent = user.email;
-                setTimeout(() => map.invalidateSize(), 100); // ensure map renders after layout
-                
-                // Load trips now that we're authenticated
-                loadTrips();
-            } else {
-                // User is signed out
-                console.log("User signed out");
-                document.getElementById('auth-container').style.display = 'block';
-                document.getElementById('dashboard-content').style.display = 'none';
-                document.getElementById('user-info').style.display = 'none';
-                document.getElementById('signup-container').style.display = 'none';
-            }
-        });
-
-        // Auth Form Handling
-        document.getElementById('auth-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            
-            const authSpinner = document.getElementById('auth-spinner');
-            authSpinner.style.display = 'inline-block';
-            
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    document.getElementById('auth-error').style.display = 'none';
-                })
-                .catch((error) => {
-                    showAuthError(error.message);
-                })
-                .finally(() => {
-                    authSpinner.style.display = 'none';
-                });
-        });
-
-        // Sign Up Form Handling
-        document.getElementById('signup-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('signup-email').value;
-            const password = document.getElementById('signup-password').value;
-            const confirm = document.getElementById('signup-confirm').value;
-            
-            if (password !== confirm) {
-                showSignupError("Passwords don't match");
-                return;
-            }
-            
-            const signupSpinner = document.getElementById('signup-spinner');
-            signupSpinner.style.display = 'inline-block';
-            
-            auth.createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    document.getElementById('signup-error').style.display = 'none';
-                })
-                .catch((error) => {
-                    showSignupError(error.message);
-                })
-                .finally(() => {
-                    signupSpinner.style.display = 'none';
-                });
-        });
-
-        // Sign Out Button
-        document.getElementById('sign-out-btn').addEventListener('click', () => {
-            auth.signOut();
-        });
-
-        // Switch between auth forms
-        document.getElementById('switch-to-signup').addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('signup-container').style.display = 'block';
-            document.getElementById('signup-error').style.display = 'none';
-        });
-
-        document.getElementById('switch-to-signin').addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('signup-container').style.display = 'none';
-            document.getElementById('auth-container').style.display = 'block';
-            document.getElementById('auth-error').style.display = 'none';
-        });
 
         // Add Trip Button
         document.getElementById('add-trip-btn').addEventListener('click', () => {
@@ -1517,20 +1478,7 @@ function saveTrip() {
         // Save Trip Button
         document.getElementById('save-trip').addEventListener('click', saveTrip);
 
-        // Helper functions
-        function showAuthError(message) {
-            const errorElement = document.getElementById('auth-error');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-        }
 
-        function showSignupError(message) {
-            const errorElement = document.getElementById('signup-error');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-        }
-
-        // Load trips from Firebase
         // function loadTrips() {
         //     const user = auth.currentUser;
         //     if (!user) return;
@@ -1546,65 +1494,41 @@ function saveTrip() {
         //         }
 
         //         const data = snapshot.val();
-        //         console.log("Trips data:", data);
-
+        //         console.log("RAW TRIPS DATA:", data); // Debug log
+                
         //         if (data) {
         //             Object.keys(data).forEach(key => {
         //                 trips.push({ 
         //                     id: key, 
         //                     ...data[key]
         //                 });
+        //                 console.log(`Trip ${key} locations:`, data[key].trip_locations); // Debug each trip
         //             });
                     
-        //             // Sort trips by start timestamp (newest first)
         //             trips.sort((a, b) => b.start_timestamp - a.start_timestamp);
         //         }
 
         //         renderTrips();
         //         updateStats();
-        //     }, (error) => {
-        //         console.error("Error loading trips:", error);
-        //         document.getElementById('trips-list').innerHTML = `
-        //             <div class="alert alert-danger">
-        //                 Error loading trips: ${error.message}
-        //             </div>
-        //         `;
         //     });
         // }
 
-        function loadTrips() {
-            const user = auth.currentUser;
-            if (!user) return;
-
-            const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
-            tripsRef.on('value', (snapshot) => {
-                trips = [];
-                
-                if (!snapshot.exists()) {
-                    console.log("No trips found for user");
-                    renderTrips();
-                    return;
-                }
-
-                const data = snapshot.val();
-                console.log("RAW TRIPS DATA:", data); // Debug log
-                
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        trips.push({ 
-                            id: key, 
-                            ...data[key]
-                        });
-                        console.log(`Trip ${key} locations:`, data[key].trip_locations); // Debug each trip
-                    });
-                    
-                    trips.sort((a, b) => b.start_timestamp - a.start_timestamp);
-                }
-
+        async function loadTrips() {
+            try {
+                const r = await fetch(`${API_BASE}/trips`);
+                if (!r.ok) throw new Error(await r.text());
+                trips = await r.json();
                 renderTrips();
                 updateStats();
-            });
-        }
+            } catch (e) {
+                console.error("Error loading trips:", e);
+                document.getElementById('trips-list').innerHTML = `
+                <div class="alert alert-danger">
+                    Error loading trips: ${e.message}
+                </div>
+                `;
+            }
+            }
 
         
 
@@ -1687,51 +1611,90 @@ function saveTrip() {
         }
 
         // Add this function with your other functions
-        function deleteTrip(tripId) {
-            if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
-                return;
+        // function deleteTrip(tripId) {
+        //     if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
+        //         return;
+        //     }
+
+        //     const user = auth.currentUser;
+        //     if (!user) return;
+
+        //     const tripRef = database.ref(`/UsersData/${user.uid}/trips/${tripId}`);
+            
+        //     // Show loading state on the delete button
+        //     const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
+        //     const originalText = deleteBtn.innerHTML;
+        //     deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+        //     deleteBtn.disabled = true;
+
+        //     tripRef.remove()
+        //         .then(() => {
+        //             console.log('Trip deleted successfully');
+        //             // If we deleted the currently selected trip, clear the selection
+        //             if (selectedTrip && selectedTrip.id === tripId) {
+        //                 selectedTrip = null;
+        //                 document.getElementById('trip-details').style.display = 'none';
+        //                 // Clear map
+        //                 markers.forEach(marker => map.removeLayer(marker));
+        //                 markers = [];
+        //                 if (polyline) {
+        //                     map.removeLayer(polyline);
+        //                     polyline = null;
+        //                 }
+        //                 map.setView([0, 0], 2);
+        //             }
+        //         })
+        //         .catch(error => {
+        //             console.error('Error deleting trip:', error);
+        //             alert('Failed to delete trip: ' + error.message);
+        //         })
+        //         .finally(() => {
+        //             // Restore button state even if we're about to remove the card
+        //             if (deleteBtn) {
+        //                 deleteBtn.innerHTML = originalText;
+        //                 deleteBtn.disabled = false;
+        //             }
+        //         });
+        // }
+
+
+        async function deleteTrip(tripId) {
+            if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) return;
+
+            const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
+            const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+            if (deleteBtn) {
+                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+                deleteBtn.disabled = true;
             }
 
-            const user = auth.currentUser;
-            if (!user) return;
+            try {
+                const r = await fetch(`${API_BASE}/trips/${tripId}`, { method: 'DELETE' });
+                if (!r.ok) throw new Error(await r.text());
 
-            const tripRef = database.ref(`/UsersData/${user.uid}/trips/${tripId}`);
-            
-            // Show loading state on the delete button
-            const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
-            const originalText = deleteBtn.innerHTML;
-            deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
-            deleteBtn.disabled = true;
+                // if current selected, clear
+                if (selectedTrip) {
+                const selectedId = selectedTrip.start_timestamp_string || selectedTrip.id;
+                if (selectedId === tripId) {
+                    selectedTrip = null;
+                    document.getElementById('trip-details').style.display = 'none';
+                    clearMap();
+                    map.setView([0, 0], 2);
+                }
+                }
 
-            tripRef.remove()
-                .then(() => {
-                    console.log('Trip deleted successfully');
-                    // If we deleted the currently selected trip, clear the selection
-                    if (selectedTrip && selectedTrip.id === tripId) {
-                        selectedTrip = null;
-                        document.getElementById('trip-details').style.display = 'none';
-                        // Clear map
-                        markers.forEach(marker => map.removeLayer(marker));
-                        markers = [];
-                        if (polyline) {
-                            map.removeLayer(polyline);
-                            polyline = null;
-                        }
-                        map.setView([0, 0], 2);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting trip:', error);
-                    alert('Failed to delete trip: ' + error.message);
-                })
-                .finally(() => {
-                    // Restore button state even if we're about to remove the card
-                    if (deleteBtn) {
-                        deleteBtn.innerHTML = originalText;
-                        deleteBtn.disabled = false;
-                    }
-                });
-        }
+                await loadTrips();
+            } catch (e) {
+                console.error(e);
+                alert('Failed to delete trip: ' + e.message);
+            } finally {
+                if (deleteBtn) {
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+                }
+            }
+            }
+
         
         // Format trip ID for display
         function formatTripId(id) {
@@ -1847,41 +1810,73 @@ function saveTrip() {
         //     }
         // }
 
-        function selectTrip(tripId) {
-            selectedTrip = trips.find(trip => trip.id === tripId);
+        // function selectTrip(tripId) {
+        //     selectedTrip = trips.find(trip => trip.id === tripId);
             
-            if (!selectedTrip) {
-                console.error("Trip not found:", tripId);
+        //     if (!selectedTrip) {
+        //         console.error("Trip not found:", tripId);
+        //         return;
+        //     }
+
+        //     console.log("Selected Trip Data:", selectedTrip); // Debug log
+
+        //     // Highlight selected trip UI
+        //     document.querySelectorAll('.trip-card').forEach(card => {
+        //         card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
+        //     });
+            
+        //     // Show trip details
+        //     document.getElementById('trip-details').style.display = 'block';
+        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
+        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip.trip_duration || selectedTrip['trip duration']);
+        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
+        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
+        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
+            
+        //     // Clear existing map elements
+        //     clearMap();
+            
+        //     // Process and display locations
+        //     const validLocations = processTripLocations(selectedTrip);
+        //     document.getElementById('locations-count').textContent = (validLocations?.length || selectedTrip.trip_locations_count || 0);
+
+        //     // Auto-hide sidebar on smaller screens after selection
+        //     if (window.innerWidth <= 1024) {
+        //         hideSidebar();
+        //     }
+        // }
+
+        async function selectTrip(tripId) {
+            try {
+                const r = await fetch(`${API_BASE}/trips/${tripId}`);
+                if (!r.ok) throw new Error(await r.text());
+                selectedTrip = await r.json();
+            } catch (e) {
+                console.error(e);
+                alert("Failed to load trip: " + e.message);
                 return;
             }
 
-            console.log("Selected Trip Data:", selectedTrip); // Debug log
-
-            // Highlight selected trip UI
+            // UI highlight (keep your existing code)
             document.querySelectorAll('.trip-card').forEach(card => {
                 card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
             });
-            
-            // Show trip details
+
             document.getElementById('trip-details').style.display = 'block';
             document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
             document.getElementById('trip-duration').textContent = formatDuration(selectedTrip.trip_duration || selectedTrip['trip duration']);
             document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
             document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
             document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
-            
-            // Clear existing map elements
-            clearMap();
-            
-            // Process and display locations
-            const validLocations = processTripLocations(selectedTrip);
-            document.getElementById('locations-count').textContent = (validLocations?.length || selectedTrip.trip_locations_count || 0);
 
-            // Auto-hide sidebar on smaller screens after selection
-            if (window.innerWidth <= 1024) {
-                hideSidebar();
+            clearMap();
+            const validLocations = processTripLocations(selectedTrip);
+            document.getElementById('locations-count').textContent =
+                (validLocations?.length || selectedTrip.trip_locations_count || 0);
+
+            if (window.innerWidth <= 1024) hideSidebar();
             }
-        }
+
 
         function clearMap() {
             markers.forEach(marker => map.removeLayer(marker));
