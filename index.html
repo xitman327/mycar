@@ -21,11 +21,73 @@
         .trip-card {
             cursor: pointer;
             transition: all 0.3s;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .trip-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .trip-card .card-body {
+            padding: 10px 12px;
+        }
+        .trip-card .card-title {
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+        .trip-card .trip-stats {
+            font-size: 0.9rem;
+            line-height: 0.9;
+            gap: 4px;
+        }
+        .trip-card .trip-time {
+            font-size: 0.82rem;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .notification-banner {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            background: #0d6efd;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+        .notification-banner.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .notification-banner.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .notification-banner.error {
+            background: #dc3545;
+        }
+        #trip-details.stats-card {
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+        #trip-details h5 {
+            margin-bottom: 6px;
+        }
+        #trip-details .metric-label {
+            font-size: 0.78rem;
+        }
+        #trip-details .metric-value {
+            font-size: 1rem;
+        }
+        #trip-details .trip-times {
+            font-size: 0.82rem;
+            color: #6c757d;
+            gap: 12px;
+            margin-top: 6px;
         }
         .stats-card {
             background-color: white;
@@ -341,15 +403,15 @@
     <button class="btn btn-primary w-100" onclick="submitAuth()">Login</button>
   </div>
 </div>
+    <div id="notification-banner" class="notification-banner" style="display:none;"></div>
 
     <!-- Dashboard Content -->
     <div id="dashboard-content" class="app-shell" style="display: none;">
         <aside class="sidebar">
             <div id="user-info" class="d-flex justify-content-between align-items-center mb-3" style="display: none;">
-                <span id="user-email" class="fw-semibold"></span>
-                <button id="sign-out-btn" class="btn btn-sm btn-outline-secondary ms-2">Sign Out</button>
+                <!-- <span id="user-email" class="fw-semibold"></span> -->
+                <!-- <button id="sign-out-btn" class="btn btn-sm btn-outline-secondary ms-2">Sign Out</button> -->
             </div>
-
             <div class="stats-card">
                 <h5 class="text-muted">Overview</h5>
                 <div class="row mt-2 g-2">
@@ -373,7 +435,7 @@
             </div>
 
             <div class="stats-card" id="trip-details" style="display: none;">
-                <h5 class="text-muted mb-2">Selected Trip</h5>
+                <h5 class="text-muted mb-1">Selected Trip</h5>
                 <div class="row g-2">
                     <div class="col-6">
                         <div class="metric-label">Top Speed</div>
@@ -388,17 +450,13 @@
                         <div class="metric-value" id="max-consumption">0 lps</div>
                     </div>
                     <div class="col-6">
-                        <div class="metric-label">Locations</div>
-                        <div class="metric-value" id="locations-count">0</div>
+                        <div class="metric-label">Distance</div>
+                        <div class="metric-value" id="locations-count">0 km</div>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <div class="metric-label">Start Time</div>
-                    <div class="metric-value" id="start-time">-</div>
-                </div>
-                <div class="mt-2">
-                    <div class="metric-label">End Time</div>
-                    <div class="metric-value" id="end-time">-</div>
+                <div class="trip-times d-flex flex-wrap align-items-center">
+                    <span><strong>Start:</strong> <span id="start-time">-</span></span>
+                    <span><strong>End:</strong> <span id="end-time">-</span></span>
                 </div>
             </div>
 
@@ -695,7 +753,7 @@
 
         // Handle location error
         map.on('locationerror', function(e) {
-            alert("Location access denied. Using default view.");
+            showNotification("Location access denied.", 'warning');
         });
 
 
@@ -1594,28 +1652,45 @@ function renderPositionList() {
             //     </div>
             // `).join('');
             // Update the trip card HTML in your renderTrips() function
-            tripsList.innerHTML = trips.map(trip => `
+            tripsList.innerHTML = trips.map(trip => {
+                const distance = trip.trip_distance || 0;
+                const durationSec = trip.trip_duration || trip['trip duration'] || 0;
+                const avgSpeed = durationSec > 0 ? `${(distance / (durationSec / 3600)).toFixed(1)} km/h` : 'N/A';
+                const avgConsumptionRaw = trip.avg_consumption ?? trip.average_consumption ?? trip.avg_lpkm ?? trip.average_lpkm ?? null;
+                const avgConsumption = avgConsumptionRaw !== null && avgConsumptionRaw !== undefined
+                    ? `${Number(avgConsumptionRaw).toFixed(1)} L/km`
+                    : 'N/A';
+                // const maxConsumption = formatFixed(trip.max_consumption, 1, 'N/A');
+                const maxConsumption = formatFixed(trip.max_consumption, 1, '0.0');
+
+                return `
                 <div class="card trip-card mb-2 ${selectedTrip?.id === trip.id ? 'active-trip' : ''}" data-id="${trip.id}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="card-title">${trip.name || formatTripId(trip.id)}</h5>
-                                <p class="card-text">
-                                    <strong>Duration:</strong> ${formatDuration(trip.trip_duration || trip['trip duration'])}<br>
-                                    <strong>Distance:</strong> ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}<br>
-                                    <strong>Top Speed:</strong> ${trip.top_speed || 0} km/h
-                                </p>
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h6 class="card-title mb-0">${formatTimestamp(trip.start_timestamp)}</h6>
+                                </div>
+                                <div class="trip-time">
+                                    ${trip.name || formatTripId(trip.id)}
+                                </div>
+                                <div class="trip-stats d-flex flex-wrap text-muted mt-1">
+                                    <span>Dur ${formatDuration(durationSec)}</span>
+                                    <span>Dist ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}</span>
+                                    <span>Top ${trip.top_speed || 0} km/h</span>
+                                    <span>Avg ${avgSpeed}</span>
+                                    <span>Max Cons ${maxConsumption}</span>
+                                    <span>Avg Cons ${avgConsumption}</span>
+                                </div>
                             </div>
                             <button class="btn btn-sm btn-outline-danger delete-trip" data-id="${trip.id}">
                                 Delete
                             </button>
                         </div>
-                        <div class="text-muted small">
-                            ${formatTimestamp(trip.start_timestamp)} - ${formatTimestamp(trip.end_timestamp)}
-                        </div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
             
             // Add click event listeners
             document.querySelectorAll('.trip-card').forEach(card => {
@@ -1889,15 +1964,21 @@ function renderPositionList() {
 
             document.getElementById('trip-details').style.display = 'block';
             document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
-            document.getElementById('trip-duration').textContent = formatDuration(selectedTrip.trip_duration || selectedTrip['trip duration']);
-            document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
+            const tripDurationSeconds = selectedTrip.trip_duration
+                || selectedTrip['trip duration']
+                || ((selectedTrip.end_timestamp && selectedTrip.start_timestamp)
+                    ? (selectedTrip.end_timestamp - selectedTrip.start_timestamp)
+                    : null);
+            document.getElementById('trip-duration').textContent = formatDurationCompact(tripDurationSeconds);
+            const maxConsumption = formatFixed(selectedTrip.max_consumption, 1, '0.0');
+            document.getElementById('max-consumption').textContent = `${maxConsumption} L/km`;
             document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
             document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
 
             clearMap();
             const validLocations = processTripLocations(selectedTrip);
-            document.getElementById('locations-count').textContent =
-                (validLocations?.length || selectedTrip.trip_locations_count || 0);
+            const distance = selectedTrip.trip_distance ?? selectedTrip.distance ?? 0;
+            document.getElementById('locations-count').textContent = `${Number(distance).toFixed(2)} km`;
 
             if (window.innerWidth <= 1024) hideSidebar();
             }
@@ -2081,6 +2162,28 @@ function renderPositionList() {
             return `${Number(consumption).toFixed(1)} L/km`;
         }
 
+        // Format numbers with fixed decimals and safe fallback
+        function formatFixed(value, decimals = 1, fallback = 'N/A') {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return fallback;
+            return num.toFixed(decimals);
+        }
+
+        let notificationTimeout;
+        function showNotification(message, variant = 'info', durationMs = 5000) {
+            const banner = document.getElementById('notification-banner');
+            if (!banner) return;
+            clearTimeout(notificationTimeout);
+            banner.textContent = message;
+            banner.className = `notification-banner ${variant}`;
+            banner.style.display = 'block';
+            requestAnimationFrame(() => banner.classList.add('show'));
+            notificationTimeout = setTimeout(() => {
+                banner.classList.remove('show');
+                setTimeout(() => banner.style.display = 'none', 250);
+            }, durationMs);
+        }
+
         function showSidebar() {
             const sidebar = document.querySelector('.sidebar');
             const toggleBtn = document.getElementById('sidebar-toggle');
@@ -2139,6 +2242,23 @@ function renderPositionList() {
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
             return `${hours > 0 ? hours + 'h ' : ''}${minutes > 0 || hours > 0 ? minutes + 'm ' : ''}${secs}s`;
+        }
+
+        // Compact duration for trip details: hides hours/minutes when zero, hides seconds when over 5 minutes
+        function formatDurationCompact(seconds) {
+            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return 'N/A';
+            const total = Math.max(0, Math.floor(seconds));
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const secs = total % 60;
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            const includeSeconds = total <= 300; // show seconds only up to 5 minutes
+            if (includeSeconds && (secs > 0 || parts.length === 0)) {
+                parts.push(`${secs}s`);
+            }
+            return parts.join(' ') || '0s';
         }
     </script>
 </body>
