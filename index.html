@@ -329,60 +329,6 @@
     </style>
 </head>
 <body>
-    <!-- Auth Container -->
-    <div id="auth-container" class="auth-container" style="display: none;">
-        <h2 class="text-center mb-4">Sign In</h2>
-        <div id="auth-error" class="alert alert-danger" style="display: none;"></div>
-        
-        <form id="auth-form" class="auth-form">
-            <div class="mb-3">
-                <label for="auth-email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="auth-email" required>
-            </div>
-            <div class="mb-3">
-                <label for="auth-password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="auth-password" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">
-                <span id="auth-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
-                Sign In
-            </button>
-        </form>
-        
-        <div class="text-center mt-3">
-            <p>Don't have an account? <a href="#" id="switch-to-signup">Sign Up</a></p>
-        </div>
-    </div>
-
-    <!-- Sign Up Container -->
-    <div id="signup-container" class="auth-container" style="display: none;">
-        <h2 class="text-center mb-4">Sign Up</h2>
-        <div id="signup-error" class="alert alert-danger" style="display: none;"></div>
-        
-        <form id="signup-form" class="auth-form">
-            <div class="mb-3">
-                <label for="signup-email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="signup-email" required>
-            </div>
-            <div class="mb-3">
-                <label for="signup-password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="signup-password" required minlength="6">
-            </div>
-            <div class="mb-3">
-                <label for="signup-confirm" class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" id="signup-confirm" required>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">
-                <span id="signup-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
-                Create Account
-            </button>
-        </form>
-        
-        <div class="text-center mt-3">
-            <p>Already have an account? <a href="#" id="switch-to-signin">Sign In</a></p>
-        </div>
-    </div>
-
     <!-- Dashboard Content -->
     <div id="dashboard-content" class="app-shell" style="display: none;">
         <aside class="sidebar">
@@ -1139,9 +1085,6 @@ function renderPositionList() {
             ram: '--'
         };
 
-        // No auth in Node-RED mode
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('signup-container').style.display = 'none';
         document.getElementById('dashboard-content').style.display = 'flex';
         document.getElementById('user-info').style.display = 'none';
 
