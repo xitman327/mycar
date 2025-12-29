@@ -70,6 +70,12 @@
         .notification-banner.error {
             background: #dc3545;
         }
+        .car-icon {
+            font-size: 26px;
+            line-height: 1;
+            text-align: center;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+        }
         #trip-details.stats-card {
             padding: 12px 14px;
             margin-bottom: 14px;
@@ -725,6 +731,16 @@
             keyboard: true        // Disable keyboard navigation (optional)
         }).setView([0, 0], 2);
 
+        const carIcon = L.divIcon({
+            className: 'car-icon',
+            html: '🚗',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+        });
+        let liveCarMarker = null;
+        let lastCarLocationTs = 0;
+        const LIVE_CAR_UPDATE_INTERVAL = 5000;
+
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -1093,13 +1109,15 @@ function renderPositionList() {
 
             ramFreeKb:         '19b10019-e8f2-537e-4f6c-d104768a1214',
             ramTotalKb:        '19b1001a-e8f2-537e-4f6c-d104768a1214',
-            ramUsedPct:        '19b1001b-e8f2-537e-4f6c-d104768a1214'
+            ramUsedPct:        '19b1001b-e8f2-537e-4f6c-d104768a1214',
+            gpsPos:            '19b10001c-e8f2-537e-4f6c-d104768a1214'
         };
         const diagnosticPieces = {
             time: null,
             gpsFix: null,
             gpsSats: null,
             gpsSpeed: null,
+            gpsPos: null,
             wifiStatus: null,
             ip: null,
             signal: null,
@@ -1129,6 +1147,7 @@ function renderPositionList() {
             gpsFix: '--',
             gpsSats: '--',
             gpsSpeed: '--',
+            gpsPos: null,
             wifi: '--',
             ip: '--',
             signal: '--',
@@ -1326,6 +1345,7 @@ function renderPositionList() {
             bleDevice = null;
             bleService = null;
             stopDiagnosticPolling();
+            clearLiveCarMarker();
         }
 
         async function sendBleCommand(command) {
@@ -1441,6 +1461,7 @@ function renderPositionList() {
                 ['gpsFix', bleCharacteristicUuids.gpsFix],
                 ['gpsSats', bleCharacteristicUuids.gpsSats],
                 ['gpsSpeed', bleCharacteristicUuids.gpsSpeed],
+                ['gpsPos', bleCharacteristicUuids.gpsPos],
                 ['wifiStatus', bleCharacteristicUuids.wifiStatus],
                 ['ip', bleCharacteristicUuids.wifiIp],
                 ['signal', bleCharacteristicUuids.wifiSignal],
@@ -1542,6 +1563,11 @@ function renderPositionList() {
                 diagnosticData.log = `${logStatus ?? '-'} | dist ${tripDist ?? '-'} km | points ${points ?? '-'} | start ${startTs ?? '-'}`;
             }
 
+            const gpsPosParsed = parseGpsPosition(diagnosticPieces.gpsPos);
+            if (gpsPosParsed) {
+                diagnosticData.gpsPos = gpsPosParsed;
+            }
+
             const car = diagnosticPieces;
             if (car.rpm || car.kmph || car.gpsKmph || car.temp || car.fuel || car.lpg || car.carEngOn) {
                 diagnosticData.car = `eng:${car.carEngOn ?? '-'} rpm:${car.rpm ?? '-'} kmph:${car.kmph ?? '-'} gps:${car.gpsKmph ?? '-'} temp:${car.temp ?? '-'}C fuel:${car.fuel ?? '-'}% lpg:${car.lpg ?? '-'}`;
@@ -1551,6 +1577,8 @@ function renderPositionList() {
             if (car.ramFreeKb || car.ramTotalKb || car.ramUsedPct) {
                 diagnosticData.ram = `${car.ramFreeKb ?? '-'}KB / ${car.ramTotalKb ?? '-'}KB (${car.ramUsedPct ?? '-'}% used)`;
             }
+
+            updateLiveCarMarkerIfNeeded();
         }
 
         // Add Trip Button
@@ -2169,6 +2197,17 @@ function renderPositionList() {
             return num.toFixed(decimals);
         }
 
+        function parseGpsPosition(value) {
+            if (!value) return null;
+            const parts = String(value).split(',').map(p => p.trim());
+            if (parts.length < 2) return null;
+            const lat = Number(parts[0]);
+            const lng = Number(parts[1]);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+            return { lat, lng };
+        }
+
         let notificationTimeout;
         function showNotification(message, variant = 'info', durationMs = 5000) {
             const banner = document.getElementById('notification-banner');
@@ -2182,6 +2221,49 @@ function renderPositionList() {
                 banner.classList.remove('show');
                 setTimeout(() => banner.style.display = 'none', 250);
             }, durationMs);
+        }
+
+        function isBleConnected() {
+            return !!(bleDevice && bleDevice.gatt && bleDevice.gatt.connected);
+        }
+
+        function hasGpsFixValue(value) {
+            if (!value) return false;
+            const normalized = String(value).toLowerCase();
+            return normalized.includes('fix') || normalized.includes('3d') || normalized.includes('2d') || normalized.includes('yes') || normalized.includes('valid');
+        }
+
+        function updateLiveCarMarkerIfNeeded() {
+            if (!map) return;
+            if (!isBleConnected() || !hasGpsFixValue(diagnosticData.gpsFix)) {
+                clearLiveCarMarker();
+                return;
+            }
+
+            const coords = diagnosticData.gpsPos;
+            if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+                clearLiveCarMarker();
+                return;
+            }
+
+            const now = Date.now();
+            if (now - lastCarLocationTs < LIVE_CAR_UPDATE_INTERVAL && liveCarMarker) return;
+
+            lastCarLocationTs = now;
+            const latlng = [coords.lat, coords.lng];
+            if (liveCarMarker) {
+                liveCarMarker.setLatLng(latlng);
+            } else {
+                liveCarMarker = L.marker(latlng, { icon: carIcon }).addTo(map);
+            }
+        }
+
+        function clearLiveCarMarker() {
+            lastCarLocationTs = 0;
+            if (liveCarMarker) {
+                map.removeLayer(liveCarMarker);
+                liveCarMarker = null;
+            }
         }
 
         function showSidebar() {
