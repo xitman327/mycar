@@ -2233,9 +2233,9 @@ function renderPositionList() {
         }
 
         function hasGpsFixValue(value) {
-            if (!value) return false;
+            if (value == '0' || value == 'false') return false;
             const normalized = String(value).toLowerCase();
-            return normalized.includes('fix') || normalized.includes('3d') || normalized.includes('2d') || normalized.includes('yes') || normalized.includes('valid');
+            return normalized.includes('fix') || normalized.includes('3d') || normalized.includes('2d') || normalized.includes('yes') || normalized.includes('valid') || normalized.includes('1');
         }
 
         function updateLiveCarMarkerIfNeeded() {
