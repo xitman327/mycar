@@ -1497,6 +1497,7 @@ function renderPositionList() {
                     } catch (err) {
                         console.warn('Read failed for', key, uuid, err);
                     }
+                    await delay(50);
                 }
 
                 composeDiagnosticData();
@@ -2195,6 +2196,10 @@ function renderPositionList() {
             const num = Number(value);
             if (!Number.isFinite(num)) return fallback;
             return num.toFixed(decimals);
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         function parseGpsPosition(value) {
