@@ -739,7 +739,7 @@
         });
         let liveCarMarker = null;
         let lastCarLocationTs = 0;
-        const LIVE_CAR_UPDATE_INTERVAL = 5000;
+        const LIVE_CAR_UPDATE_INTERVAL = 2000;
 
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1512,7 +1512,7 @@ function renderPositionList() {
                 if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
                     fetchDiagnosticsFromCharacteristics(serviceUuid);
                 }
-            }, 100);
+            }, 300);
         }
 
         function stopDiagnosticPolling() {
