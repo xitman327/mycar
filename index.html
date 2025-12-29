@@ -1512,7 +1512,7 @@ function renderPositionList() {
                 if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
                     fetchDiagnosticsFromCharacteristics(serviceUuid);
                 }
-            }, 300);
+            }, 1000);
         }
 
         function stopDiagnosticPolling() {
