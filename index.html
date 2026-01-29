@@ -245,6 +245,12 @@
         .diagnostic-open .sidebar-toggle.right-toggle {
             right: calc(var(--sidebar-width) + 12px);
         }
+        .sidebar-toggle.config-toggle {
+            top: 64px;
+        }
+        .config-open .sidebar-toggle.right-toggle {
+            right: calc(var(--sidebar-width) + 12px);
+        }
         .bolt-icon {
             display: inline-block;
             transform: translateY(-1px);
@@ -394,6 +400,32 @@
             border-color: #0d6efd;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        .pid-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pid-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f1f3f5;
+            border: 1px solid #e5e7eb;
+            font-size: 0.9rem;
+        }
+        .pid-pill button {
+            border: none;
+            background: transparent;
+            color: #dc3545;
+            padding: 0;
+            line-height: 1;
+        }
+        .pid-empty {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -404,6 +436,7 @@
   <div style="background:#fff; padding:18px; border-radius:10px; width:320px;">
     <h5>Node-RED Login</h5>
     <div id="auth-error" style="color:#c00; display:none; margin-bottom:8px;"></div>
+    <input id="auth-url" class="form-control mb-2" placeholder="https://nodered.com/endpoint/api">
     <input id="auth-user" class="form-control mb-2" placeholder="Username">
     <input id="auth-pass" type="password" class="form-control mb-3" placeholder="Password">
     <button class="btn btn-primary w-100" onclick="submitAuth()">Login</button>
@@ -484,6 +517,9 @@
             </button>
             <button id="diagnostic-toggle" class="btn btn-light btn-sm sidebar-toggle right-toggle" aria-label="Toggle BLE diagnostics">
                 <span class="bolt-icon">&#9889;</span>
+            </button>
+            <button id="config-toggle" class="btn btn-light btn-sm sidebar-toggle right-toggle config-toggle" aria-label="Toggle PID configuration">
+                <span class="bolt-icon">&#9881;</span>
             </button>
             <div id="map"></div>
         </main>
@@ -575,6 +611,45 @@
                 </div>
             </div>
         </aside>
+
+        <aside class="sidebar sidebar-right hidden" id="config-panel">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h5 class="mb-0">PID Configuration</h5>
+                    <p class="mb-0 text-muted small">pid_request_list (40 bytes)</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-secondary border" id="pid-count-badge">0/40</span>
+                    <div class="btn-group">
+                        <button id="ble-connect-btn-config" class="btn btn-primary btn-sm">Connect</button>
+                        <button id="ble-disconnect-btn-config" class="btn btn-outline-secondary btn-sm" disabled>Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <div class="mb-2 text-muted small">Add OBD-II PIDs to request from the device.</div>
+                <div class="input-group">
+                    <select class="form-select" id="pid-select" aria-label="Select PID"></select>
+                    <button class="btn btn-primary" id="pid-add-btn">Add</button>
+                </div>
+                <small class="text-muted d-block mt-2">Writing updates both PID chunks on the BLE device.</small>
+                <small class="text-muted d-block mt-2">Updating PIDs will restart the trip if already started!</small>
+            </div>
+
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-muted">Current list</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" id="pid-refresh-btn">Refresh</button>
+                        <button class="btn btn-outline-danger" id="pid-clear-btn">Clear</button>
+                    </div>
+                </div>
+                <div id="pid-list" class="pid-list">
+                    <div class="pid-empty">No PIDs yet.</div>
+                </div>
+            </div>
+        </aside>
     </div>
 
     
@@ -652,17 +727,18 @@
     
     <script>
 
-        const API_BASE = 'https://mynas.xitos.uk/endpoint/api';
+        let API_BASE = 'https://google.com/api';
 
         function basicAuthHeader(username, password) {
             return 'Basic ' + btoa(`${username}:${password}`);
         }
 
         async function apiFetch(url, options = {}) {
+            API_BASE = localStorage.getItem('nr_url');
             const username = localStorage.getItem('nr_user');
             const password = localStorage.getItem('nr_pass');
 
-            if (!username || !password) {
+            if (!username || !password || !API_BASE) {
                 showAuth();
                 throw new Error('AUTH_MISSING');
                 
@@ -702,9 +778,11 @@
         }
 
         async function submitAuth() {
+            const url = document.getElementById('auth-url').value;
             const u = document.getElementById('auth-user').value;
             const p = document.getElementById('auth-pass').value;
 
+            localStorage.setItem('nr_url', url);
             localStorage.setItem('nr_user', u);
             localStorage.setItem('nr_pass', p);
 
@@ -714,6 +792,7 @@
                 hideAuth();
                 await loadTrips();
             } catch (e) {
+                localStorage.removeItem('nr_url');
                 localStorage.removeItem('nr_user');
                 localStorage.removeItem('nr_pass');
                 const el = document.getElementById('auth-error');
@@ -890,56 +969,6 @@ function renderPositionList() {
     });
 }
 
-// Update your saveTrip function to include positions
-// function saveTrip() {
-//     const user = auth.currentUser;
-//     if (!user) return;
-
-//     const tripName = document.getElementById('trip-name').value;
-//     const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
-//     const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
-//     const distance = parseFloat(document.getElementById('trip-distance').value);
-//     const topSpeed = parseInt(document.getElementById('top-speed-input').value);
-
-//     if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
-//         alert("Please fill all required fields with valid values");
-//         return;
-//     }
-
-//     const saveSpinner = document.getElementById('save-spinner');
-//     saveSpinner.style.display = 'inline-block';
-
-//     const newTrip = {
-//         name: tripName,
-//         start_timestamp: startTimestamp,
-//         end_timestamp: endTimestamp,
-//         start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
-//         end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
-//         trip_distance: distance,
-//         top_speed: topSpeed,
-//         'trip_duration': endTimestamp - startTimestamp,
-//         trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
-//         trip_locations_count: positionCoordinates.length
-//     };
-
-//     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
-//     tripsRef.push(newTrip)
-//         .then(() => {
-//             document.getElementById('trip-form').reset();
-//             positionCoordinates = [];
-//             positionMarkers = [];
-//             document.getElementById('positions-container').innerHTML = '';
-//             addTripModal.hide();
-//         })
-//         .catch(error => {
-//             console.error("Error saving trip:", error);
-//             alert("Error saving trip: " + error.message);
-//         })
-//         .finally(() => {
-//             saveSpinner.style.display = 'none';
-//         });
-// }
-
     async function saveTrip() {
         const tripName = document.getElementById('trip-name').value;
 
@@ -1006,54 +1035,6 @@ function renderPositionList() {
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
         }
 
-
-// Save new trip to Firebase
-        // function saveTrip() {
-        //     const user = auth.currentUser;
-        //     if (!user) return;
-
-        //     const tripName = document.getElementById('trip-name').value;
-        //     const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
-        //     const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
-        //     const distance = parseFloat(document.getElementById('trip-distance').value);
-        //     const topSpeed = parseInt(document.getElementById('top-speed-input').value);
-
-        //     if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
-        //         alert("Please fill all fields with valid values");
-        //         return;
-        //     }
-
-        //     const saveSpinner = document.getElementById('save-spinner');
-        //     saveSpinner.style.display = 'inline-block';
-
-        //     const newTrip = {
-        //         name: tripName,
-        //         start_timestamp: startTimestamp,
-        //         end_timestamp: endTimestamp,
-        //         start_timestamp_string: formatFirebaseTimestamp(startTimestamp),
-        //         end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
-        //         trip_distance: distance,
-        //         top_speed: topSpeed,
-        //         'trip duration': endTimestamp - startTimestamp,
-        //         trip_locations: [], // Empty array for now
-        //         trip_locations_count: 0
-        //     };
-
-        //     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
-        //     tripsRef.push(newTrip)
-        //         .then(() => {
-        //             document.getElementById('trip-form').reset();
-        //             addTripModal.hide();
-        //         })
-        //         .catch(error => {
-        //             console.error("Error saving trip:", error);
-        //             alert("Error saving trip: " + error.message);
-        //         })
-        //         .finally(() => {
-        //             saveSpinner.style.display = 'none';
-        //         });
-        // }
-
         
         // Global variables
         let trips = [];
@@ -1063,6 +1044,7 @@ function renderPositionList() {
         let addTripModal = null;
         let sidebarOpen = true;
         let diagnosticOpen = false;
+        let configOpen = false;
         let bleDevice = null;
         let bleServer = null;
         let bleService = null;
@@ -1074,6 +1056,141 @@ function renderPositionList() {
         const bleTextDecoder = new TextDecoder();
         const bleTextEncoder = new TextEncoder();
         const defaultNotifyCharacteristicUuid = '19b10001-e8f2-537e-4f6c-d104768a1214'; // set to your notify characteristic
+        const PID_CHUNK0_UUID = '19b1001d-e8f2-537e-4f6c-d104768a1214';
+        const PID_CHUNK1_UUID = '19b1001e-e8f2-537e-4f6c-d104768a1214';
+        const PID_NAMES = {
+            0x00: 'Supported PIDs 00-1F',
+            0x01: 'Monitor status since DTC clear',
+            0x02: 'Freeze DTC',
+            0x03: 'Fuel system status',
+            0x04: 'Calculated engine load',
+            0x05: 'Engine coolant temperature',
+            0x06: 'Short-term fuel trim Bank 1',
+            0x07: 'Long-term fuel trim Bank 1',
+            0x08: 'Short-term fuel trim Bank 2',
+            0x09: 'Long-term fuel trim Bank 2',
+            0x0A: 'Fuel pressure',
+            0x0B: 'Intake manifold absolute pressure',
+            0x0C: 'Engine RPM',
+            0x0D: 'Vehicle speed',
+            0x0E: 'Timing advance',
+            0x0F: 'Intake air temperature',
+            0x10: 'MAF air flow rate',
+            0x11: 'Throttle position',
+            0x12: 'Commanded secondary air',
+            0x13: 'O2 sensors present (banks 1-2)',
+            0x14: 'O2 S1 B1 voltage / STFT',
+            0x15: 'O2 S2 B1 voltage / STFT',
+            0x16: 'O2 S3 B1 voltage / STFT',
+            0x17: 'O2 S4 B1 voltage / STFT',
+            0x18: 'O2 S1 B2 voltage / STFT',
+            0x19: 'O2 S2 B2 voltage / STFT',
+            0x1A: 'O2 S3 B2 voltage / STFT',
+            0x1B: 'O2 S4 B2 voltage / STFT',
+            0x1C: 'OBD standard the vehicle conforms to',
+            0x1D: 'O2 sensors present (banks)',
+            0x1E: 'Auxiliary input status',
+            0x1F: 'Run time since engine start',
+            0x20: 'Supported PIDs 21-40',
+            0x21: 'Distance traveled with MIL on',
+            0x22: 'Fuel rail pressure (vacuum reference)',
+            0x23: 'Fuel rail gauge pressure (diesel/direct)',
+            0x24: 'O2 S1 wideband lambda (eq ratio / V)',
+            0x25: 'O2 S2 wideband lambda (eq ratio / V)',
+            0x26: 'O2 S3 wideband lambda (eq ratio / V)',
+            0x27: 'O2 S4 wideband lambda (eq ratio / V)',
+            0x28: 'O2 S5 wideband lambda (eq ratio / V)',
+            0x29: 'O2 S6 wideband lambda (eq ratio / V)',
+            0x2A: 'O2 S7 wideband lambda (eq ratio / V)',
+            0x2B: 'O2 S8 wideband lambda (eq ratio / V)',
+            0x2C: 'Commanded EGR',
+            0x2D: 'EGR error',
+            0x2E: 'Commanded evaporative purge',
+            0x2F: 'Fuel level input',
+            0x30: 'Warm-ups since DTC clear',
+            0x31: 'Distance traveled since DTC clear',
+            0x32: 'Evap system vapor pressure',
+            0x33: 'Barometric pressure',
+            0x34: 'O2 S1 wideband lambda (current)',
+            0x35: 'O2 S2 wideband lambda (current)',
+            0x36: 'O2 S3 wideband lambda (current)',
+            0x37: 'O2 S4 wideband lambda (current)',
+            0x38: 'O2 S5 wideband lambda (current)',
+            0x39: 'O2 S6 wideband lambda (current)',
+            0x3A: 'O2 S7 wideband lambda (current)',
+            0x3B: 'O2 S8 wideband lambda (current)',
+            0x3C: 'Catalyst temperature B1S1',
+            0x3D: 'Catalyst temperature B2S1',
+            0x3E: 'Catalyst temperature B1S2',
+            0x3F: 'Catalyst temperature B2S2',
+            0x40: 'Supported PIDs 41-60',
+            0x41: 'Monitor status this drive cycle',
+            0x42: 'Control module voltage',
+            0x43: 'Absolute load value',
+            0x44: 'Commanded equivalence ratio',
+            0x45: 'Relative throttle position',
+            0x46: 'Ambient air temperature',
+            0x47: 'Absolute throttle position B',
+            0x48: 'Absolute throttle position C',
+            0x49: 'Accelerator pedal position D',
+            0x4A: 'Accelerator pedal position E',
+            0x4B: 'Accelerator pedal position F',
+            0x4C: 'Commanded throttle actuator',
+            0x4D: 'Time run with MIL on',
+            0x4E: 'Time since DTCs cleared',
+            0x4F: 'Max values for eq ratio, O2, MAP',
+            0x50: 'Fuel type',
+            0x51: 'Ethanol fuel percentage',
+            0x52: 'Absolute evap system vapor pressure',
+            0x53: 'Evap system vapor pressure',
+            0x54: 'ST secondary O2 trim B1/B3',
+            0x55: 'LT secondary O2 trim B1/B3',
+            0x56: 'ST secondary O2 trim B2/B4',
+            0x57: 'LT secondary O2 trim B2/B4',
+            0x58: 'Fuel rail absolute pressure',
+            0x59: 'Relative accelerator pedal position',
+            0x5A: 'Hybrid battery pack remaining life',
+            0x5B: 'Engine oil temperature',
+            0x5C: 'Fuel injection timing',
+            0x5D: 'Engine fuel rate',
+            0x5E: 'Emission requirements (design)',
+            0x5F: 'GM proprietary / reserved (0x5F)',
+            0x60: 'Supported PIDs 61-80',
+            0x61: 'Driver demand engine percent torque',
+            0x62: 'Actual engine percent torque',
+            0x63: 'Engine reference torque',
+            0x64: 'Engine percent torque data (idle/points)',
+            0x65: 'Aux input/output supported (GM)',
+            0x66: 'Mass air flow sensor high-res (GM)',
+            0x67: 'Engine coolant temp high-res (GM)',
+            0x68: 'Intake air temp high-res (GM)',
+            0x69: 'Commanded EGR / EGR error (GM)',
+            0x6A: 'Evap purge flow (GM)',
+            0x6B: 'Turbo / supercharger boost (GM)',
+            0x6C: 'Charge air cooler outlet temp (GM)',
+            0x6D: 'Exhaust gas temperature sensor (GM)',
+            0x6E: 'Diesel particulate filter temp/pressure (GM)',
+            0x6F: 'Engine friction percent torque',
+            0x70: 'GM proprietary / reserved (0x70)',
+            0xc9: 'Adapter Temperature',
+            0xcA: 'Adapter Humidity'
+        };
+        const BASE_PID_MAX = 0x70;
+        const basePids = Array.from({ length: BASE_PID_MAX + 1 }, (_, value) => value);
+        const namedPids = Object.keys(PID_NAMES)
+            .map(k => parseInt(k, 0)) // allow hex-style keys like 0xc9
+            .filter(n => !Number.isNaN(n));
+        const PID_OPTIONS = Array.from(new Set([...basePids, ...namedPids]))
+            .sort((a, b) => a - b)
+            .map(value => {
+                const hex = value.toString(16).padStart(2, '0').toUpperCase();
+                const name = PID_NAMES[value] || `PID ${hex}`;
+                return { value, label: `${hex} - ${name}` };
+            });
+        let pidChunk0 = null;
+        let pidChunk1 = null;
+        let pidRequestList = new Uint8Array(40);
+        let pidList = [];
         // One characteristic per metric (fill in your device UUIDs)
         const bleCharacteristicUuids = {
             time:              '19b10001-e8f2-537e-4f6c-d104768a1214',
@@ -1193,15 +1310,49 @@ function renderPositionList() {
             document.body.classList.toggle('diagnostic-open', diagnosticOpen);
             diagnosticToggle.addEventListener('click', () => {
                 diagnosticOpen = !diagnosticOpen;
+                if (diagnosticOpen && configOpen) {
+                    configOpen = false;
+                    document.getElementById('config-panel').classList.add('hidden');
+                    document.body.classList.remove('config-open');
+                }
                 diagnosticPanel.classList.toggle('hidden', !diagnosticOpen);
                 document.body.classList.toggle('diagnostic-open', diagnosticOpen);
                 setTimeout(() => map.invalidateSize(), 120);
             });
 
+            const configPanel = document.getElementById('config-panel');
+            const configToggle = document.getElementById('config-toggle');
+            configPanel.classList.add('hidden');
+            document.body.classList.toggle('config-open', configOpen);
+            configToggle.addEventListener('click', () => {
+                configOpen = !configOpen;
+                if (configOpen && diagnosticOpen) {
+                    diagnosticOpen = false;
+                    diagnosticPanel.classList.add('hidden');
+                    document.body.classList.remove('diagnostic-open');
+                }
+                configPanel.classList.toggle('hidden', !configOpen);
+                document.body.classList.toggle('config-open', configOpen);
+                setTimeout(() => map.invalidateSize(), 120);
+            });
+
             const btnConnect = document.getElementById('ble-connect-btn');
             const btnDisconnect = document.getElementById('ble-disconnect-btn');
+            const btnConnectConfig = document.getElementById('ble-connect-btn-config');
+            const btnDisconnectConfig = document.getElementById('ble-disconnect-btn-config');
             if (btnConnect) btnConnect.addEventListener('click', connectBle);
             if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectBle);
+            if (btnConnectConfig) btnConnectConfig.addEventListener('click', connectBle);
+            if (btnDisconnectConfig) btnDisconnectConfig.addEventListener('click', disconnectBle);
+
+            hydratePidSelect();
+            renderPidList();
+            const pidAddBtn = document.getElementById('pid-add-btn');
+            if (pidAddBtn) pidAddBtn.addEventListener('click', handlePidAdd);
+            const pidRefreshBtn = document.getElementById('pid-refresh-btn');
+            if (pidRefreshBtn) pidRefreshBtn.addEventListener('click', () => syncPidListFromDevice().catch(console.error));
+            const pidClearBtn = document.getElementById('pid-clear-btn');
+            if (pidClearBtn) pidClearBtn.addEventListener('click', () => clearPidList(true));
         });
 
         // BLE Diagnostics Helpers
@@ -1232,11 +1383,162 @@ function renderPositionList() {
         function setBleControls({ connected = false, connecting = false } = {}) {
             const connectBtn = document.getElementById('ble-connect-btn');
             const disconnectBtn = document.getElementById('ble-disconnect-btn');
+            const connectBtnConfig = document.getElementById('ble-connect-btn-config');
+            const disconnectBtnConfig = document.getElementById('ble-disconnect-btn-config');
             const sendBtn = document.getElementById('ble-send-btn');
 
             if (connectBtn) connectBtn.disabled = connecting || connected;
             if (disconnectBtn) disconnectBtn.disabled = !connected;
+            if (connectBtnConfig) connectBtnConfig.disabled = connecting || connected;
+            if (disconnectBtnConfig) disconnectBtnConfig.disabled = !connected;
             if (sendBtn) sendBtn.disabled = !connected;
+        }
+
+        function hydratePidSelect() {
+            const select = document.getElementById('pid-select');
+            if (!select) return;
+            select.innerHTML = PID_OPTIONS.map(opt => {
+                const hex = opt.value.toString(16).padStart(2, '0').toUpperCase();
+                return `<option value="${hex}">${opt.label}</option>`;
+            }).join('');
+        }
+
+        function pidLabel(pidVal) {
+            const match = PID_OPTIONS.find(p => p.value === pidVal);
+            const hex = pidVal.toString(16).padStart(2, '0').toUpperCase();
+            return match ? match.label : `${hex} - PID`;
+        }
+
+        function updatePidBadge() {
+            const badge = document.getElementById('pid-count-badge');
+            if (badge) badge.textContent = `${pidList.length}/40`;
+        }
+
+        function renderPidList() {
+            const listEl = document.getElementById('pid-list');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+
+            if (!pidList.length) {
+                listEl.innerHTML = '<div class="pid-empty">No PIDs yet.</div>';
+                updatePidBadge();
+                return;
+            }
+
+            pidList.forEach((pidVal, index) => {
+                const pill = document.createElement('div');
+                pill.className = 'pid-pill';
+                pill.innerHTML = `
+                    <span>${pidLabel(pidVal)}</span>
+                    <button aria-label="Remove PID" data-idx="${index}">&times;</button>
+                `;
+                pill.querySelector('button').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    pidList.splice(index, 1);
+                    renderPidList();
+                    await writePidListToDevice();
+                });
+                listEl.appendChild(pill);
+            });
+            updatePidBadge();
+        }
+
+        async function handlePidAdd() {
+            const select = document.getElementById('pid-select');
+            if (!select) return;
+            const pidVal = parseInt(select.value, 16);
+            if (Number.isNaN(pidVal)) return;
+            if (pidList.length >= 40) {
+                showNotification('PID list is full (40 bytes).', 'warning');
+                return;
+            }
+            if (pidList.includes(pidVal)) {
+                showNotification('PID already in the list.', 'warning');
+                return;
+            }
+            pidList.push(pidVal & 0xFF);
+            renderPidList();
+            await writePidListToDevice();
+        }
+
+        async function ensurePidCharacteristics() {
+            if (!bleService) throw new Error('BLE service not ready');
+            if (!pidChunk0) pidChunk0 = await bleService.getCharacteristic(PID_CHUNK0_UUID);
+            if (!pidChunk1) pidChunk1 = await bleService.getCharacteristic(PID_CHUNK1_UUID);
+        }
+
+        function resetPidState() {
+            pidChunk0 = null;
+            pidChunk1 = null;
+            pidRequestList = new Uint8Array(40);
+            pidList = [];
+            renderPidList();
+        }
+
+        async function syncPidListFromDevice() {
+            if (!bleDevice || !bleDevice.gatt?.connected || !bleService) return;
+            try {
+                await ensurePidCharacteristics();
+                const v0 = new Uint8Array((await pidChunk0.readValue()).buffer);
+                const v1 = new Uint8Array((await pidChunk1.readValue()).buffer);
+                const combined = new Uint8Array(40);
+                combined.set(v0.slice(0, 20), 0);
+                combined.set(v1.slice(0, 20), 20);
+                pidRequestList = combined;
+                const entries = Array.from(combined);
+                const lastNonZero = entries.reduce((acc, val, idx) => val !== 0 ? idx : acc, -1);
+                pidList = lastNonZero === -1 ? [] : entries.slice(0, lastNonZero + 1);
+                renderPidList();
+                logBle(`PID list read (${pidList.length}): ${toHex(combined)}`);
+            } catch (err) {
+                console.warn('PID list read failed', err);
+                logBle(`PID list read failed: ${err.message}`);
+            }
+        }
+
+        async function clearPidList(shouldWrite = false) {
+            pidList = [];
+            pidRequestList = new Uint8Array(40);
+            renderPidList();
+            if (shouldWrite) {
+                try {
+                    await writePidListToDevice();
+                } catch (err) {
+                    console.warn('PID clear failed', err);
+                }
+            }
+        }
+
+        async function writePidListToDevice() {
+            if (!bleDevice || !bleDevice.gatt?.connected) {
+                showNotification('Connect to BLE to write PID list.', 'warning');
+                return;
+            }
+            try {
+                await ensurePidCharacteristics();
+                pidRequestList = new Uint8Array(40);
+                pidList.slice(0, 40).forEach((pidVal, idx) => {
+                    pidRequestList[idx] = pidVal & 0xFF;
+                });
+                const first = pidRequestList.slice(0, 20);
+                const second = pidRequestList.slice(20, 40);
+                if (pidChunk0.writeValueWithoutResponse) {
+                    await pidChunk0.writeValueWithoutResponse(first);
+                } else {
+                    await pidChunk0.writeValue(first);
+                }
+                if (pidChunk1.writeValueWithoutResponse) {
+                    await pidChunk1.writeValueWithoutResponse(second);
+                } else {
+                    await pidChunk1.writeValue(second);
+                }
+                logBle(`PID list wrote (${pidList.length}): ${toHex(pidRequestList)}`);
+                showNotification('PID list updated', 'info', 2500);
+            } catch (err) {
+                console.error('PID list write failed', err);
+                logBle(`PID list write failed: ${err.message}`);
+                showNotification('Failed to write PID list: ' + err.message, 'error', 4000);
+            }
         }
 
         async function connectBle() {
@@ -1265,9 +1567,11 @@ function renderPositionList() {
                 }
 
                 if (!bleDevice) {
-                    // acceptAllDevices avoids "Not supported" when the service is not in advertisements
                     const device = await navigator.bluetooth.requestDevice({
-                        acceptAllDevices: true,
+                        acceptAllDevices: false,
+                        filters: [
+                            {services: [serviceUuid]}
+                        ],
                         optionalServices: [serviceUuid]
                     });
                     bleDevice = device;
@@ -1300,6 +1604,7 @@ function renderPositionList() {
                 // Attempt to read diagnostic values from individual characteristics (if UUIDs are set)
                 fetchDiagnosticsFromCharacteristics(serviceUuid);
                 startDiagnosticPolling(serviceUuid);
+                await syncPidListFromDevice();
             } catch (error) {
                 console.error('BLE connect error', error);
                 logBle(`Connection failed: ${error.message}`);
@@ -1330,6 +1635,7 @@ function renderPositionList() {
             bleServer = null;
             bleService = null;
             stopDiagnosticPolling();
+            resetPidState();
             document.getElementById('ble-device-name').textContent = 'None';
             setBleStatus('Disconnected', 'secondary');
             setBleControls({ connected: false });
@@ -1345,6 +1651,7 @@ function renderPositionList() {
             bleDevice = null;
             bleService = null;
             stopDiagnosticPolling();
+            resetPidState();
             clearLiveCarMarker();
         }
 
@@ -1590,41 +1897,6 @@ function renderPositionList() {
         // Save Trip Button
         document.getElementById('save-trip').addEventListener('click', saveTrip);
 
-
-        // function loadTrips() {
-        //     const user = auth.currentUser;
-        //     if (!user) return;
-
-        //     const tripsRef = database.ref(`/UsersData/${user.uid}/trips`);
-        //     tripsRef.on('value', (snapshot) => {
-        //         trips = [];
-                
-        //         if (!snapshot.exists()) {
-        //             console.log("No trips found for user");
-        //             renderTrips();
-        //             return;
-        //         }
-
-        //         const data = snapshot.val();
-        //         console.log("RAW TRIPS DATA:", data); // Debug log
-                
-        //         if (data) {
-        //             Object.keys(data).forEach(key => {
-        //                 trips.push({ 
-        //                     id: key, 
-        //                     ...data[key]
-        //                 });
-        //                 console.log(`Trip ${key} locations:`, data[key].trip_locations); // Debug each trip
-        //             });
-                    
-        //             trips.sort((a, b) => b.start_timestamp - a.start_timestamp);
-        //         }
-
-        //         renderTrips();
-        //         updateStats();
-        //     });
-        // }
-
         async function loadTrips() {
             try {
                 const r = await apiFetch(`${API_BASE}/trips`);
@@ -1667,20 +1939,6 @@ function renderPositionList() {
             
             tripCount.textContent = `${trips.length} trips total`;
             
-            // tripsList.innerHTML = trips.map(trip => `
-            //     <div class="card trip-card mb-2 ${selectedTrip?.id === trip.id ? 'active-trip' : ''}" data-id="${trip.id}">
-            //         <div class="card-body">
-            //             <h5 class="card-title">${trip.name || formatTripId(trip.id)}</h5>
-            //             <p class="card-text">
-            //                 <strong>Duration:</strong> ${formatDuration(trip['trip duration'])}<br>
-            //                 <strong>Distance:</strong> ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}<br>
-            //                 <strong>Top Speed:</strong> ${trip.top_speed || 0} km/h<br>
-            //                 <strong>Time:</strong> ${formatTimestamp(trip.start_timestamp)} - ${formatTimestamp(trip.end_timestamp)}
-            //             </p>
-            //         </div>
-            //     </div>
-            // `).join('');
-            // Update the trip card HTML in your renderTrips() function
             tripsList.innerHTML = trips.map(trip => {
                 const distance = trip.trip_distance || 0;
                 const durationSec = trip.trip_duration || trip['trip duration'] || 0;
@@ -1739,54 +1997,6 @@ function renderPositionList() {
             });
         }
 
-        // Add this function with your other functions
-        // function deleteTrip(tripId) {
-        //     if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
-        //         return;
-        //     }
-
-        //     const user = auth.currentUser;
-        //     if (!user) return;
-
-        //     const tripRef = database.ref(`/UsersData/${user.uid}/trips/${tripId}`);
-            
-        //     // Show loading state on the delete button
-        //     const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
-        //     const originalText = deleteBtn.innerHTML;
-        //     deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
-        //     deleteBtn.disabled = true;
-
-        //     tripRef.remove()
-        //         .then(() => {
-        //             console.log('Trip deleted successfully');
-        //             // If we deleted the currently selected trip, clear the selection
-        //             if (selectedTrip && selectedTrip.id === tripId) {
-        //                 selectedTrip = null;
-        //                 document.getElementById('trip-details').style.display = 'none';
-        //                 // Clear map
-        //                 markers.forEach(marker => map.removeLayer(marker));
-        //                 markers = [];
-        //                 if (polyline) {
-        //                     map.removeLayer(polyline);
-        //                     polyline = null;
-        //                 }
-        //                 map.setView([0, 0], 2);
-        //             }
-        //         })
-        //         .catch(error => {
-        //             console.error('Error deleting trip:', error);
-        //             alert('Failed to delete trip: ' + error.message);
-        //         })
-        //         .finally(() => {
-        //             // Restore button state even if we're about to remove the card
-        //             if (deleteBtn) {
-        //                 deleteBtn.innerHTML = originalText;
-        //                 deleteBtn.disabled = false;
-        //             }
-        //         });
-        // }
-
-
         async function deleteTrip(tripId) {
             if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) return;
 
@@ -1829,151 +2039,6 @@ function renderPositionList() {
         function formatTripId(id) {
             return id.replace(/_/g, ' ').replace(/__/g, ':');
         }
-        
-        // Select a trip to display on map
-        // function selectTrip(tripId) {
-        //     selectedTrip = trips.find(trip => trip.id === tripId);
-            
-        //     // Highlight selected trip
-        //     document.querySelectorAll('.trip-card').forEach(card => {
-        //         if (card.getAttribute('data-id') === tripId) {
-        //             card.classList.add('active-trip');
-        //         } else {
-        //             card.classList.remove('active-trip');
-        //         }
-        //     });
-            
-        //     // Show trip details
-        //     document.getElementById('trip-details').style.display = 'block';
-        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
-        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip['trip duration']);
-        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
-        //     document.getElementById('locations-count').textContent = selectedTrip.trip_locations_count || 0;
-        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
-        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
-            
-        //     // Clear existing markers and polyline
-        //     markers.forEach(marker => map.removeLayer(marker));
-        //     markers = [];
-        //     if (polyline) {
-        //         map.removeLayer(polyline);
-        //     }
-            
-        //     // Filter out null locations and locations with (0,0) coordinates
-        //     const validLocations = (selectedTrip.trip_locations || [])
-        //         .filter(loc => loc && (loc.lat !== 0 || loc.log !== 0));
-            
-        //     if (validLocations.length > 0) {
-        //         // Create array of coordinates for polyline
-        //         const coordinates = validLocations.map(loc => [loc.lat, loc.log]);
-                
-        //         // Add markers for each location
-        //         validLocations.forEach((location, index) => {
-        //             const marker = L.marker([location.lat, location.log]).addTo(map)
-        //                 .bindPopup(`
-        //                     <b>Point ${index + 1}</b><br>
-        //                     Time: ${location.time_string || formatTimestamp(location.time)}<br>
-        //                     Speed: ${location.speed || 0} km/h<br>
-        //                     RPM: ${location.rpm || 0}<br>
-        //                     Consumption: ${location.consumption?.lps || 0} lps
-        //                 `);
-        //             markers.push(marker);
-        //         });
-                
-        //         // Draw the route
-        //         polyline = L.polyline(coordinates, {color: 'blue'}).addTo(map);
-                
-        //         // Fit map to show the entire route
-        //         map.fitBounds(polyline.getBounds());
-        //     } else {
-        //         // No valid coordinates - show message
-        //         map.setView([0, 0], 2);
-        //         L.popup()
-        //             .setLatLng([0, 0])
-        //             .setContent('No valid location data for this trip')
-        //             .openOn(map);
-        //     }
-        // }
-        
-        // function selectTrip(tripId) {
-        //     selectedTrip = trips.find(trip => trip.id === tripId);
-            
-        //     // Highlight selected trip
-        //     document.querySelectorAll('.trip-card').forEach(card => {
-        //         card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
-        //     });
-            
-        //     // Show trip details
-        //     document.getElementById('trip-details').style.display = 'block';
-        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
-        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip['trip duration']);
-        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
-        //     document.getElementById('locations-count').textContent = selectedTrip.trip_locations_count || 0;
-        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
-        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
-            
-        //     // Clear existing markers and polyline
-        //     markers.forEach(marker => map.removeLayer(marker));
-        //     markers = [];
-        //     if (polyline) {
-        //         map.removeLayer(polyline);
-        //     }
-            
-        //     // Check if trip_locations exists and is an array
-        //     if (!selectedTrip.trip_locations || !Array.isArray(selectedTrip.trip_locations)) {
-        //         console.log("Trip locations not exists or not array");
-        //         showNoLocationData();
-        //         return;
-        //     }
-            
-        //     // Process locations - handle different coordinate property names
-        //     const validLocations = selectedTrip.trip_locations
-        //         .filter(loc => loc && !isNullIsland(loc))
-        //         .map(normalizeLocation);
-        //     // console.log(validLocations);
-        //     if (validLocations.length > 0) {
-        //         plotLocationsOnMap(validLocations);
-        //     } else {
-        //         console.log("Trip locations length < 0");
-        //         showNoLocationData();
-        //     }
-        // }
-
-        // function selectTrip(tripId) {
-        //     selectedTrip = trips.find(trip => trip.id === tripId);
-            
-        //     if (!selectedTrip) {
-        //         console.error("Trip not found:", tripId);
-        //         return;
-        //     }
-
-        //     console.log("Selected Trip Data:", selectedTrip); // Debug log
-
-        //     // Highlight selected trip UI
-        //     document.querySelectorAll('.trip-card').forEach(card => {
-        //         card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
-        //     });
-            
-        //     // Show trip details
-        //     document.getElementById('trip-details').style.display = 'block';
-        //     document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
-        //     document.getElementById('trip-duration').textContent = formatDuration(selectedTrip.trip_duration || selectedTrip['trip duration']);
-        //     document.getElementById('max-consumption').textContent = `${selectedTrip.max_consumption || 0} lps`;
-        //     document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
-        //     document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
-            
-        //     // Clear existing map elements
-        //     clearMap();
-            
-        //     // Process and display locations
-        //     const validLocations = processTripLocations(selectedTrip);
-        //     document.getElementById('locations-count').textContent = (validLocations?.length || selectedTrip.trip_locations_count || 0);
-
-        //     // Auto-hide sidebar on smaller screens after selection
-        //     if (window.innerWidth <= 1024) {
-        //         hideSidebar();
-        //     }
-        // }
 
         async function selectTrip(tripId) {
             try {
@@ -2196,6 +2261,11 @@ function renderPositionList() {
             const num = Number(value);
             if (!Number.isFinite(num)) return fallback;
             return num.toFixed(decimals);
+        }
+
+        function toHex(buffer) {
+            if (!buffer) return '';
+            return Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join(' ');
         }
 
         function delay(ms) {

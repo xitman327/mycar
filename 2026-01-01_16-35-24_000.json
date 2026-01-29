@@ -1,0 +1,61 @@
+{
+    "start_timestamp"     : 1767285324,
+    "trip_locations_count": 3,
+    "trip_locations"      : [
+        {
+            "time"                      : 1767285324,
+            "lng"                       :       null,
+            "lat"                       :       null,
+            "Engine RPM"                :          0,
+            "Vehicle speed"             :          0,
+            "MAF air flow rate"         :          0,
+            "Throttle position"         :          0,
+            "Engine coolant temperature":          0,
+            "Control module voltage"    :          0,
+            "Adapter Temperature"       :          0,
+            "Adapter Humudity"          :          0
+        },
+        {
+            "time"                      : 1767285324,
+            "lng"                       :       null,
+            "lat"                       :       null,
+            "Engine RPM"                :          0,
+            "Vehicle speed"             :          0,
+            "MAF air flow rate"         :          0,
+            "Throttle position"         :          0,
+            "Engine coolant temperature":          0,
+            "Control module voltage"    :          0,
+            "Adapter Temperature"       :          0,
+            "Adapter Humudity"          :          0
+        },
+        {
+            "time"                      : 1767285326,
+            "lng"                       :       null,
+            "lat"                       :       null,
+            "Engine RPM"                :          0,
+            "Vehicle speed"             :          0,
+            "MAF air flow rate"         :          0,
+            "Throttle position"         :          0,
+            "Engine coolant temperature":          0,
+            "Control module voltage"    :          0,
+            "Adapter Temperature"       :          0,
+            "Adapter Humudity"          :          0
+        },
+        {
+            "time"                      : 1767285328,
+            "lng"                       :       null,
+            "lat"                       :       null,
+            "Engine RPM"                :          0,
+            "Vehicle speed"             :          0,
+            "MAF air flow rate"         :          0,
+            "Throttle position"         :          0,
+            "Engine coolant temperature":          0,
+            "Control module voltage"    :          0,
+            "Adapter Temperature"       :          0,
+            "Adapter Humudity"          :          0
+        }
+    ],
+    "top_speed"           : 140,
+    "max_consumption"     : 58.17673,
+    "trip_distance"       : 0
+}
