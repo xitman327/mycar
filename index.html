@@ -1,49 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Car Trip Tracker</title>
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/fluency/96/track-order.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- <link rel="stylesheet" href="https://unpkg.com/leaflet-iconmaterial/dist/leaflet.icon-material.css"> -->
+    <link href="css/leaflet.icon-material.css" rel="stylesheet">
     <style>
-        html, body {
+        html,
+        body {
             height: 100%;
         }
+
+        :root {
+            --bg-color: #f5f5f5;
+            --panel-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --muted-color: #6c757d;
+            --border-color: #e5e5e5;
+            --chip-bg: #f9fafb;
+            --pill-bg: #f1f3f5;
+            --diag-bg: #fbfbfc;
+            --input-bg: #ffffff;
+            --input-text: #212529;
+            --input-border: #ced4da;
+        }
+
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             overflow: hidden;
         }
-        .dashboard-header { display: none; }
+
+        body[data-theme="day"] {
+            --bg-color: #f5f5f5;
+            --panel-bg: #ffffff;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --muted-color: #6c757d;
+            --border-color: #e5e5e5;
+            --chip-bg: #f9fafb;
+            --pill-bg: #f1f3f5;
+            --diag-bg: #fbfbfc;
+            --input-bg: #ffffff;
+            --input-text: #212529;
+            --input-border: #ced4da;
+        }
+
+        body[data-theme="night"] {
+            color-scheme: dark;
+            --bg-color: #0f0f0f;
+            --panel-bg: #0f0f0f;
+            --card-bg: #151922;
+            --text-color: #e6e9ef;
+            --muted-color: #9aa4b2;
+            --border-color: #252c3a;
+            --chip-bg: #121723;
+            --pill-bg: #1a2130;
+            --diag-bg: #141a26;
+            --input-bg: #0f141f;
+            --input-text: #e6e9ef;
+            --input-border: #2a3242;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body[data-theme="system"] {
+                color-scheme: dark;
+                --bg-color: #0f0f0f;
+                --panel-bg: #0f0f0f;
+                --card-bg: #151922;
+                --text-color: #e6e9ef;
+                --muted-color: #9aa4b2;
+                --border-color: #252c3a;
+                --chip-bg: #121723;
+                --pill-bg: #1a2130;
+                --diag-bg: #141a26;
+                --input-bg: #0f141f;
+                --input-text: #e6e9ef;
+                --input-border: #2a3242;
+            }
+        }
+
+        .dashboard-header {
+            display: none;
+        }
+
         .trip-card {
             cursor: pointer;
             transition: all 0.3s;
             margin-bottom: 10px;
+            background-color: var(--card-bg);
         }
+
         .trip-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
+
         .trip-card .card-body {
             padding: 10px 12px;
+
         }
+
         .trip-card .card-title {
             font-size: 1rem;
             margin-bottom: 2px;
+            color: var(--text-color);
         }
+
         .trip-card .trip-stats {
             font-size: 0.9rem;
             line-height: 0.9;
             gap: 4px;
         }
+
         .trip-card .trip-time {
             font-size: 0.82rem;
             color: #6c757d;
             margin-top: 4px;
         }
+
         .notification-banner {
             position: fixed;
             top: 12px;
@@ -53,55 +138,66 @@
             color: #fff;
             padding: 10px 16px;
             border-radius: 10px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
             z-index: 9999;
             opacity: 0;
             transition: opacity 0.2s ease, transform 0.2s ease;
             pointer-events: none;
         }
+
         .notification-banner.show {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
         .notification-banner.warning {
             background: #ffc107;
             color: #212529;
         }
+
         .notification-banner.error {
             background: #dc3545;
         }
+
         .car-icon {
             font-size: 26px;
             line-height: 1;
             text-align: center;
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
         }
+
         #trip-details.stats-card {
             padding: 12px 14px;
             margin-bottom: 14px;
         }
+
         #trip-details h5 {
             margin-bottom: 6px;
         }
+
         #trip-details .metric-label {
             font-size: 0.78rem;
         }
+
         #trip-details .metric-value {
             font-size: 1rem;
         }
+
         #trip-details .trip-times {
             font-size: 0.82rem;
             color: #6c757d;
             gap: 12px;
             margin-top: 6px;
         }
+
         .stats-card {
-            background-color: white;
+            background-color: var(--card-bg);
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .delete-trip {
             transition: all 0.2s;
             opacity: 0.5;
@@ -114,13 +210,19 @@
         .delete-trip:hover {
             transform: scale(1.1);
         }
+
         #map {
             height: 100%;
             border-radius: 0;
             margin-bottom: 0;
-            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
-            touch-action: none; /* Prevent browser touch actions */
+            -webkit-tap-highlight-color: transparent;
+            /* Remove tap highlight on iOS */
+            touch-action: none;
+            /* Prevent browser touch actions */
+            background: #262626 !important;
+            /* Match this to your dark tile color */
         }
+
         /* Improve marker touch targets */
         .leaflet-marker-icon {
             touch-action: none;
@@ -129,44 +231,53 @@
         .active-trip {
             border-left: 5px solid #0d6efd;
         }
+
         .metric-value {
             font-size: 1.2rem;
             font-weight: bold;
         }
+
         .metric-label {
             font-size: 0.9rem;
-            color: #6c757d;
+            color: var(--muted-color);
         }
+
         .auth-container {
             max-width: 400px;
             margin: 50px auto;
             padding: 20px;
-            background: white;
+            background: var(--card-bg);
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .auth-form {
             margin-top: 20px;
         }
+
         .user-info {
             color: white;
             margin-right: 15px;
         }
+
         .loading-spinner {
             display: none;
             width: 3rem;
             height: 3rem;
         }
+
         .app-shell {
             display: flex;
             height: 100vh;
             width: 100vw;
             position: relative;
         }
+
         :root {
             --sidebar-width: 360px;
             --sidebar-max-width: 420px;
         }
+
         .sidebar {
             position: absolute;
             left: 0;
@@ -174,30 +285,34 @@
             bottom: 0;
             width: var(--sidebar-width);
             max-width: var(--sidebar-max-width);
-            background: #ffffff;
-            border-right: 1px solid #e5e5e5;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
             overflow-y: auto;
             padding: 16px;
-            box-shadow: 4px 0 12px rgba(0,0,0,0.05);
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.05);
             transform: translateX(0);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             z-index: 1100;
             backdrop-filter: blur(6px);
         }
+
         .sidebar.hidden {
             transform: translateX(-100%);
             box-shadow: none;
         }
+
         .sidebar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
         }
+
         .map-area {
             flex: 1;
             position: relative;
         }
+
         .sidebar-toggle {
             position: absolute;
             top: 12px;
@@ -208,11 +323,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            opacity: 0.9;
+            background-color: #c5c5c593;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.548);
             border-radius: 10px;
             gap: 4px;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
+
         .sidebar-toggle .bar {
             width: 3px;
             height: 18px;
@@ -220,21 +338,26 @@
             border-radius: 2px;
             transition: height 0.2s ease, transform 0.2s ease;
         }
+
         .sidebar-toggle:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
             background-color: #f8f9fb;
         }
+
         .sidebar-toggle.hidden .bar:nth-child(2) {
             height: 12px;
         }
+
         .sidebar-toggle.hidden .bar:nth-child(3) {
             height: 8px;
             transform: translateY(2px);
         }
-        .sidebar-open .sidebar-toggle {
+
+        .sidebar-open #sidebar-toggle {
             left: calc(var(--sidebar-width) + 12px);
         }
+
         .sidebar-toggle.right-toggle {
             left: auto;
             right: 12px;
@@ -242,19 +365,26 @@
             height: 44px;
             font-size: 18px;
         }
-        .diagnostic-open .sidebar-toggle.right-toggle {
-            right: calc(var(--sidebar-width) + 12px);
-        }
+
         .sidebar-toggle.config-toggle {
             top: 64px;
         }
-        .config-open .sidebar-toggle.right-toggle {
-            right: calc(var(--sidebar-width) + 12px);
+
+        @media (min-width: 993px) {
+            .diagnostic-open .sidebar-toggle.right-toggle {
+                right: calc(var(--sidebar-width) + 12px);
+            }
+
+            .config-open .sidebar-toggle.right-toggle {
+                right: calc(var(--sidebar-width) + 12px);
+            }
         }
+
         .bolt-icon {
             display: inline-block;
             transform: translateY(-1px);
         }
+
         #map {
             position: absolute;
             inset: 0;
@@ -263,45 +393,62 @@
             border-radius: 0;
             margin: 0;
         }
-        .sidebar h3, .sidebar h2, .sidebar h5 {
+
+        .sidebar h3,
+        .sidebar h2,
+        .sidebar h5 {
             margin: 0;
         }
+
         .stats-card {
             margin-bottom: 12px;
         }
+
         @media (max-width: 992px) {
             :root {
                 --sidebar-width: 100%;
                 --sidebar-max-width: 100%;
             }
+
             .sidebar {
                 width: var(--sidebar-width);
                 max-width: var(--sidebar-max-width);
             }
+
             .sidebar-toggle {
                 top: 16px;
+            }
+
+            #sidebar-toggle {
                 left: 12px;
             }
-            .sidebar-open .sidebar-toggle {
+
+            .sidebar-open #sidebar-toggle {
                 left: 12px;
             }
+
             .diagnostic-open .sidebar-toggle.right-toggle {
                 right: 12px;
             }
         }
-        .start-icon, .end-icon {
+
+        .start-icon,
+        .end-icon {
             border-radius: 50%;
             width: 14px;
             height: 14px;
             border: 2px solid #fff;
-            box-shadow: 0 0 4px rgba(0,0,0,0.4);
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
         }
+
         .start-icon {
             background: #2ecc71;
         }
+
         .end-icon {
             background: #e74c3c;
         }
+
         .triangle-marker {
             width: 20px;
             height: 20px;
@@ -311,6 +458,7 @@
             box-shadow: none;
             margin: 0 !important;
         }
+
         .triangle-marker .triangle-shape {
             width: 20px;
             height: 20px;
@@ -320,9 +468,10 @@
             top: 0;
             transform: rotate(var(--rotation, 0deg));
             transform-origin: 50% 0%;
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
             pointer-events: none;
         }
+
         .sidebar-right {
             position: absolute;
             left: auto;
@@ -331,32 +480,36 @@
             bottom: 0;
             width: var(--sidebar-width);
             max-width: var(--sidebar-max-width);
-            background: #ffffff;
-            border-left: 1px solid #e5e5e5;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
             overflow-y: auto;
             padding: 16px;
-            box-shadow: -4px 0 12px rgba(0,0,0,0.05);
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.05);
             transform: translateX(100%);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             z-index: 1100;
             backdrop-filter: blur(6px);
             display: none;
         }
+
         .sidebar-right.hidden {
             transform: translateX(100%);
             box-shadow: none;
             display: none;
         }
+
         .sidebar-right:not(.hidden) {
             transform: translateX(0);
             display: block;
         }
+
         #ble-log {
             height: 180px;
             overflow-y: auto;
             font-family: monospace;
-            background: #f8f9fa;
+            background: var(--chip-bg);
         }
+
         .status-dot {
             width: 10px;
             height: 10px;
@@ -364,57 +517,67 @@
             display: inline-block;
             margin-right: 6px;
         }
+
         .ble-chip {
-            border: 1px dashed #ced4da;
+            border: 1px dashed var(--border-color);
             padding: 6px 10px;
             border-radius: 8px;
             font-size: 0.85rem;
-            background: #f9fafb;
+            background: var(--chip-bg);
         }
+
         .diag-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 8px;
         }
+
         .diag-card {
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 8px 10px;
-            background: #fbfbfc;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            background: var(--diag-bg);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         }
+
         .diag-card h6 {
             margin: 0 0 2px 0;
             font-size: 0.9rem;
         }
+
         .diag-label {
             font-size: 0.78rem;
-            color: #6c757d;
+            color: var(--muted-color);
         }
+
         .diag-value {
             font-weight: 600;
             font-size: 0.9rem;
         }
+
         .diag-card.live-blink {
             box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
             border-color: #0d6efd;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+
         .pid-list {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
+
         .pid-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 6px 10px;
             border-radius: 999px;
-            background: #f1f3f5;
-            border: 1px solid #e5e7eb;
+            background: var(--pill-bg);
+            border: 1px solid var(--border-color);
             font-size: 0.9rem;
         }
+
         .pid-pill button {
             border: none;
             background: transparent;
@@ -422,26 +585,126 @@
             padding: 0;
             line-height: 1;
         }
+
         .pid-empty {
-            color: #6c757d;
+            color: var(--muted-color);
             font-size: 0.9rem;
+        }
+
+        .text-muted {
+            color: var(--muted-color) !important;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border-color: var(--input-border);
+        }
+
+        .form-control::placeholder {
+            color: var(--muted-color);
+        }
+
+        .form-check-input {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+        }
+
+        .inline-block-child {
+            display: inline-block;
         }
     </style>
 </head>
+
 <body>
 
     <div id="basic-auth-overlay" style="display:none;
   position:fixed; inset:0; background:rgba(0,0,0,.45);
   z-index:99999; align-items:center; justify-content:center;">
-  <div style="background:#fff; padding:18px; border-radius:10px; width:320px;">
-    <h5>Node-RED Login</h5>
-    <div id="auth-error" style="color:#c00; display:none; margin-bottom:8px;"></div>
-    <input id="auth-url" class="form-control mb-2" placeholder="https://nodered.com/endpoint/api">
-    <input id="auth-user" class="form-control mb-2" placeholder="Username">
-    <input id="auth-pass" type="password" class="form-control mb-3" placeholder="Password">
-    <button class="btn btn-primary w-100" onclick="submitAuth()">Login</button>
-  </div>
-</div>
+        <div style="background:var(--card-bg); padding:18px; border-radius:10px; width:320px;">
+            <h5>ESP32 Connection</h5>
+            <div id="auth-error" style="color:#c00; display:none; margin-bottom:8px;"></div>
+            <div class="mb-2">
+                <label class="form-label">ESP32 Host URL</label>
+                <input type="text" id="auth-url" class="form-control" placeholder="http://homeassistant:8099">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">API Secret Key</label>
+                <input type="password" id="auth-secret" class="form-control" placeholder="CHANGE_THIS_SECRET">
+            </div>
+            <button onclick="submitAuth()" class="btn btn-primary w-100">Connect</button>
+        </div>
+    </div>
+    <div id="wifi-config-overlay" style="display:none;
+  position:fixed; inset:0; background:rgba(0,0,0,.45);
+  z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:var(--card-bg); padding:18px; border-radius:10px; width:520px; max-width:92vw;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">WiFi Configuration</h5>
+                <button class="btn btn-sm btn-outline-secondary" onclick="hideWifiConfig()">Close</button>
+            </div>
+            <div class="row g-2">
+                <div class="col-12">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>WiFi 1</strong>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="wifi1-enabled">
+                                <label class="form-check-label" for="wifi1-enabled">Enabled</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="wifi1-ssid" placeholder="SSID">
+                        <input type="password" class="form-control mt-2" id="wifi1-pass" placeholder="Password">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>WiFi 2</strong>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="wifi2-enabled">
+                                <label class="form-check-label" for="wifi2-enabled">Enabled</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="wifi2-ssid" placeholder="SSID">
+                        <input type="password" class="form-control mt-2" id="wifi2-pass" placeholder="Password">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>WiFi 3</strong>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="wifi3-enabled">
+                                <label class="form-check-label" for="wifi3-enabled">Enabled</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="wifi3-ssid" placeholder="SSID">
+                        <input type="password" class="form-control mt-2" id="wifi3-pass" placeholder="Password">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="border rounded p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>WiFi 4</strong>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="wifi4-enabled">
+                                <label class="form-check-label" for="wifi4-enabled">Enabled</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="wifi4-ssid" placeholder="SSID">
+                        <input type="password" class="form-control mt-2" id="wifi4-pass" placeholder="Password">
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary w-50" onclick="readWifiSettingsFromDevice()">Load from
+                    device</button>
+                <button class="btn btn-primary w-50" onclick="writeWifiSettingsToDevice()">Save WiFi</button>
+            </div>
+        </div>
+    </div>
     <div id="notification-banner" class="notification-banner" style="display:none;"></div>
 
     <!-- Dashboard Content -->
@@ -504,6 +767,7 @@
                     <h5 class="mb-0">Trips</h5>
                     <p class="mb-0 text-muted small" id="trip-count">0 trips total</p>
                 </div>
+                <button id="refresh-trip-btn" class="btn btn-primary btn-sm">Refresh</button>
                 <button id="add-trip-btn" class="btn btn-primary btn-sm">Add Trip</button>
             </div>
             <div id="trips-list">
@@ -512,13 +776,15 @@
         </aside>
 
         <main class="map-area">
-            <button id="sidebar-toggle" class="btn btn-light btn-sm sidebar-toggle" aria-label="Toggle trips">
+            <button id="sidebar-toggle" class="btn btn-sm sidebar-toggle" aria-label="Toggle trips">
                 <span class="bar"></span><span class="bar"></span><span class="bar"></span>
             </button>
-            <button id="diagnostic-toggle" class="btn btn-light btn-sm sidebar-toggle right-toggle" aria-label="Toggle BLE diagnostics">
+            <button id="diagnostic-toggle" class="btn btn-sm sidebar-toggle right-toggle"
+                aria-label="Toggle BLE diagnostics">
                 <span class="bolt-icon">&#9889;</span>
             </button>
-            <button id="config-toggle" class="btn btn-light btn-sm sidebar-toggle right-toggle config-toggle" aria-label="Toggle PID configuration">
+            <button id="config-toggle" class="btn btn-sm sidebar-toggle right-toggle config-toggle"
+                aria-label="Toggle PID configuration">
                 <span class="bolt-icon">&#9881;</span>
             </button>
             <div id="map"></div>
@@ -535,22 +801,27 @@
                 </div>
                 <div class="btn-group">
                     <button id="ble-connect-btn" class="btn btn-primary btn-sm">Connect</button>
-                    <button id="ble-disconnect-btn" class="btn btn-outline-secondary btn-sm" disabled>Disconnect</button>
+                    <button id="ble-disconnect-btn" class="btn btn-outline-secondary btn-sm"
+                        disabled>Disconnect</button>
                 </div>
             </div>
 
             <div class="stats-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                        <div class="metric-label">Device</div>
+                        <div class="metric-label">
+                            Device
+                            <span class="badge bg-secondary" id="ble-connection-badge">Idle</span>
+                        </div>
                         <div class="metric-value" id="ble-device-name">None</div>
                     </div>
-                    <span class="badge bg-secondary" id="ble-connection-badge">Idle</span>
+
+
                 </div>
-                <div class="small text-muted mb-1">Service + characteristic UUIDs are set in code.</div>
+                <!-- <div class="small text-muted mb-1">Service + characteristic UUIDs are set in code.</div>
                 <div class="alert alert-warning p-2 py-1 small mb-0">
                     <strong>Android:</strong> use Chrome over HTTPS, enable Bluetooth & Location, then tap Connect.
-                </div>
+                </div> -->
             </div>
 
             <div class="stats-card">
@@ -561,51 +832,41 @@
                 <div class="diag-grid">
                     <div class="diag-card">
                         <h6>Time</h6>
-                        <div class="diag-label">System clock</div>
                         <div class="diag-value" id="diag-time">--</div>
                     </div>
                     <div class="diag-card">
                         <h6>GPS</h6>
-                        <div class="diag-label">Fix / Sats</div>
-                        <div class="diag-value"><span id="diag-gps-fix">--</span> | sats <span id="diag-gps-sats">--</span></div>
-                        <div class="diag-label mt-1">Speed</div>
-                        <div class="diag-value" id="diag-gps-speed">--</div>
+                        <div class="diag-value"><span id="diag-gps-fix">--</span> | sats <span
+                                id="diag-gps-sats">--</span></div>
+                        <div class="diag-value">Speed: <span class="diag-value" id="diag-gps-speed">--</span></div>
                     </div>
                     <div class="diag-card">
                         <h6>WiFi</h6>
-                        <div class="diag-label">Status</div>
-                        <div class="diag-value" id="diag-wifi">--</div>
-                        <div class="diag-label mt-1">IP / Signal</div>
+                        <div class="diag-label">Status <span class="diag-value" id="diag-wifi">--</span></div>
                         <div class="diag-value"><span id="diag-ip">--</span> | <span id="diag-signal">--</span></div>
                     </div>
                     <div class="diag-card">
                         <h6>OBD</h6>
-                        <div class="diag-label">Protocol</div>
                         <div class="diag-value" id="diag-obd">--</div>
                     </div>
                     <div class="diag-card">
                         <h6>Upload</h6>
-                        <div class="diag-label">Stage / Files</div>
                         <div class="diag-value" id="diag-upload">--</div>
                     </div>
                     <div class="diag-card">
                         <h6>Log</h6>
-                        <div class="diag-label">Status / Points</div>
                         <div class="diag-value" id="diag-log">--</div>
                     </div>
                     <div class="diag-card">
                         <h6>Car</h6>
-                        <div class="diag-label">Engine / Speed / Temp</div>
                         <div class="diag-value" id="diag-car">--</div>
                     </div>
                     <div class="diag-card">
-                        <h6>Battery</h6>
-                        <div class="diag-label">Vehicle battery</div>
+                        <h6>Voltage</h6>
                         <div class="diag-value" id="diag-batt">--</div>
                     </div>
                     <div class="diag-card">
                         <h6>RAM</h6>
-                        <div class="diag-label">Usage</div>
                         <div class="diag-value" id="diag-ram">--</div>
                     </div>
                 </div>
@@ -616,13 +877,15 @@
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
                     <h5 class="mb-0">PID Configuration</h5>
-                    <p class="mb-0 text-muted small">pid_request_list (40 bytes)</p>
+                    <span id="ble-status-dot-pid" class="status-dot bg-secondary"></span>
+                    <span id="ble-status-text-pid">Disconnected</span>
+                    <!-- <p class="mb-0 text-muted small">pid_request_list (40 bytes)</p> -->
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-light text-secondary border" id="pid-count-badge">0/40</span>
                     <div class="btn-group">
                         <button id="ble-connect-btn-config" class="btn btn-primary btn-sm">Connect</button>
-                        <button id="ble-disconnect-btn-config" class="btn btn-outline-secondary btn-sm" disabled>Disconnect</button>
+                        <button id="ble-disconnect-btn-config" class="btn btn-outline-secondary btn-sm"
+                            disabled>Disconnect</button>
                     </div>
                 </div>
             </div>
@@ -640,6 +903,7 @@
             <div class="stats-card">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0 text-muted">Current list</h6>
+                    <span class="badge bg-light text-secondary border" id="pid-count-badge">0/40</span>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary" id="pid-refresh-btn">Refresh</button>
                         <button class="btn btn-outline-danger" id="pid-clear-btn">Clear</button>
@@ -649,1774 +913,134 @@
                     <div class="pid-empty">No PIDs yet.</div>
                 </div>
             </div>
+
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 text-muted">Device Settings</h6>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" id="settings-read-btn">Read</button>
+                        <button class="btn btn-outline-primary" id="settings-save-btn">Save</button>
+                    </div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center border rounded p-2">
+                            <div>
+                                <strong>WiFi Networks</strong>
+                                <div class="text-muted small">Configure 4 preferred networks.</div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm" id="wifi-config-btn">Configure</button>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center border rounded p-2">
+                            <div>
+                                <strong>Node-RED</strong>
+                                <div class="text-muted small">Configure endpoint credentials.</div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm" id="nodered-config-btn">Configure</button>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label" for="trip-start-condition">Trip Start Condition</label>
+                        <select class="form-select" id="trip-start-condition"></select>
+                        <small class="text-muted d-block mt-1">Matches firmware enum ordering.</small>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="theme-select">Theme</label>
+                        <select class="form-select" id="theme-select">
+                            <option value="day">Day</option>
+                            <option value="night">Night</option>
+                            <option value="system">System</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </aside>
     </div>
 
-    
-                        <!-- Add this inside your HTML, replacing the existing trip form -->
-<div class="modal fade" id="addTripModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Add New Trip</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="trip-form">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="trip-name" class="form-label">Trip Name</label>
-                                <input type="text" class="form-control" id="trip-name" required>
+
+    <!-- Add this inside your HTML, replacing the existing trip form -->
+    <div class="modal fade" id="addTripModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Trip</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="trip-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="trip-name" class="form-label">Trip Name</label>
+                                    <input type="text" class="form-control" id="trip-name" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="start-timestamp" class="form-label">Start Time</label>
+                                    <input type="datetime-local" class="form-control" id="start-timestamp" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="end-timestamp" class="form-label">End Time</label>
+                                    <input type="datetime-local" class="form-control" id="end-timestamp" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="trip-distance" class="form-label">Distance (km)</label>
+                                    <input type="number" step="0.1" class="form-control" id="trip-distance" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="top-speed-input" class="form-label">Top Speed (km/h)</label>
+                                    <input type="number" class="form-control" id="top-speed-input" required>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="start-timestamp" class="form-label">Start Time</label>
-                                <input type="datetime-local" class="form-control" id="start-timestamp" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="end-timestamp" class="form-label">End Time</label>
-                                <input type="datetime-local" class="form-control" id="end-timestamp" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="trip-distance" class="form-label">Distance (km)</label>
-                                <input type="number" step="0.1" class="form-control" id="trip-distance" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="top-speed-input" class="form-label">Top Speed (km/h)</label>
-                                <input type="number" class="form-control" id="top-speed-input" required>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Trip Positions</label>
+                                    <div id="positions-container" style="max-height: 300px; overflow-y: auto;">
+                                        <!-- Positions will be added here -->
+                                    </div>
+                                    <div class="input-group mt-2">
+                                        <input type="number" step="0.000001" class="form-control" id="position-lat"
+                                            placeholder="Latitude">
+                                        <input type="number" step="0.000001" class="form-control" id="position-lng"
+                                            placeholder="Longitude">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            id="add-position-btn">Add</button>
+                                    </div>
+                                    <small class="text-muted">Click on map to auto-fill coordinates</small>
+                                </div>
+                                <div id="position-map" style="height: 200px; border-radius: 5px;"></div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Trip Positions</label>
-                                <div id="positions-container" style="max-height: 300px; overflow-y: auto;">
-                                    <!-- Positions will be added here -->
-                                </div>
-                                <div class="input-group mt-2">
-                                    <input type="number" step="0.000001" class="form-control" id="position-lat" placeholder="Latitude">
-                                    <input type="number" step="0.000001" class="form-control" id="position-lng" placeholder="Longitude">
-                                    <button class="btn btn-outline-secondary" type="button" id="add-position-btn">Add</button>
-                                </div>
-                                <small class="text-muted">Click on map to auto-fill coordinates</small>
-                            </div>
-                            <div id="position-map" style="height: 200px; border-radius: 5px;"></div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="save-trip">
-                    <span id="save-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status" aria-hidden="true"></span>
-                    Save Trip
-                </button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="save-trip">
+                        <span id="save-spinner" class="spinner-border spinner-border-sm loading-spinner" role="status"
+                            aria-hidden="true"></span>
+                        Save Trip
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-                    </form>
-                </div>
-                </div>
-            </div>
-        </div>
+    </form>
+    </div>
+    </div>
+    </div>
+    </div>
     </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script>
+    <!-- <script src="https://unpkg.com/leaflet-iconmaterial@1.1.0/dist/leaflet.icon-material.js"></script> -->
+    <script src="js/leaflet.icon-material.js"></script>
 
-        let API_BASE = 'https://google.com/api';
-
-        function basicAuthHeader(username, password) {
-            return 'Basic ' + btoa(`${username}:${password}`);
-        }
-
-        async function apiFetch(url, options = {}) {
-            API_BASE = localStorage.getItem('nr_url');
-            const username = localStorage.getItem('nr_user');
-            const password = localStorage.getItem('nr_pass');
-
-            if (!username || !password || !API_BASE) {
-                showAuth();
-                throw new Error('AUTH_MISSING');
-                
-            }
-
-            const headers = {
-                ...(options.headers || {}),
-                'Authorization': basicAuthHeader(username, password),
-                'Content-Type': 'application/json'
-            };
-
-            const res = await fetch(url, {
-                ...options,
-                headers
-            });
-
-            if (res.status === 401 || res.status === 403) {
-                showAuth();
-                throw new Error('AUTH_INVALID');
-                
-            }
-
-            if (!res.ok) {
-                throw new Error(`HTTP_${res.status}`);
-            }
-
-            return res;
-        }
-
-
-        function showAuth() {
-            document.getElementById('basic-auth-overlay').style.display = 'flex';
-        }
-
-        function hideAuth() {
-            document.getElementById('basic-auth-overlay').style.display = 'none';
-        }
-
-        async function submitAuth() {
-            const url = document.getElementById('auth-url').value;
-            const u = document.getElementById('auth-user').value;
-            const p = document.getElementById('auth-pass').value;
-
-            localStorage.setItem('nr_url', url);
-            localStorage.setItem('nr_user', u);
-            localStorage.setItem('nr_pass', p);
-
-            try {
-                // test credentials
-                await apiFetch(API_BASE + '/trips');
-                hideAuth();
-                await loadTrips();
-            } catch (e) {
-                localStorage.removeItem('nr_url');
-                localStorage.removeItem('nr_user');
-                localStorage.removeItem('nr_pass');
-                const el = document.getElementById('auth-error');
-                el.textContent = 'Invalid credentials';
-                el.style.display = 'block';
-            }
-        }
-
-        // Initialize map
-        let map = L.map('map', {
-            scrollWheelZoom: true,  // Disable scroll wheel zoom
-            touchZoom: true,        // Enable pinch-to-zoom
-            doubleClickZoom: true,  // Enable double-tap zoom
-            boxZoom: true,         // Enable shift-drag zoom box
-            keyboard: true        // Disable keyboard navigation (optional)
-        }).setView([0, 0], 2);
-
-        const carIcon = L.divIcon({
-            className: 'car-icon',
-            html: '🚗',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
-        });
-        let liveCarMarker = null;
-        let lastCarLocationTs = 0;
-        const LIVE_CAR_UPDATE_INTERVAL = 2000;
-
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        // Get current location
-        map.locate({
-            setView: true,
-            maxZoom: 16,
-            watch: false, // Set to true to continuously update
-            enableHighAccuracy: true
-        });
-
-        // Handle location found
-        map.on('locationfound', function(e) {
-            L.marker([e.latlng.lat, e.latlng.lng]).addTo(map)
-                .bindPopup("You are here").openPopup();
-            
-            L.circle(e.latlng, {
-                color: 'blue',
-                fillColor: '#30f',
-                fillOpacity: 0.2,
-                radius: e.accuracy
-            }).addTo(map);
-        });
-
-        // Handle location error
-        map.on('locationerror', function(e) {
-            showNotification("Location access denied.", 'warning');
-        });
-
-
-        // Add these variables at the top with your other global variables
-let positionMap;
-let positionMarkers = [];
-let positionCoordinates = [];
-
-// Initialize the position map when modal is shown
-document.getElementById('addTripModal').addEventListener('shown.bs.modal', function() {
-    positionMap = L.map('position-map').setView([0, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(positionMap);
-    
-    // Add click handler to map
-    positionMap.on('click', function(e) {
-        document.getElementById('position-lat').value = e.latlng.lat.toFixed(6);
-        document.getElementById('position-lng').value = e.latlng.lng.toFixed(6);
-    });
-});
-
-// Clear the position map when modal is hidden
-document.getElementById('addTripModal').addEventListener('hidden.bs.modal', function() {
-    if (positionMap) {
-        positionMap.remove();
-        positionMap = null;
-    }
-    positionCoordinates = [];
-    positionMarkers = [];
-    document.getElementById('positions-container').innerHTML = '';
-});
-
-// Add position button handler
-document.getElementById('add-position-btn').addEventListener('click', function() {
-    const lat = parseFloat(document.getElementById('position-lat').value);
-    const lng = parseFloat(document.getElementById('position-lng').value);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-        alert('Please enter valid coordinates');
-        return;
-    }
-    
-    // Add to coordinates array
-    const position = {
-        lat: lat,
-        lng: lng,
-        time: Math.floor(Date.now() / 1000), // Current timestamp
-        time_string: new Date().toLocaleString(),
-        speed: 0, // Can be modified if you have speed data
-        consumption: { lps: 0 } // Default values
-    };
-    positionCoordinates.push(position);
-    
-    // Add marker to map
-    const marker = L.marker([lat, lng]).addTo(positionMap)
-        .bindPopup(`Position ${positionCoordinates.length}`);
-    positionMarkers.push(marker);
-    
-    // Add to positions list
-    const positionElement = document.createElement('div');
-    positionElement.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
-    positionElement.innerHTML = `
-        <div>
-            <strong>Position ${positionCoordinates.length}</strong>
-            <div class="text-muted small">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-        </div>
-        <button class="btn btn-sm btn-outline-danger remove-position" data-index="${positionCoordinates.length - 1}">
-            &times;
-        </button>
-    `;
-    document.getElementById('positions-container').appendChild(positionElement);
-    
-    // Add remove handler
-    positionElement.querySelector('.remove-position').addEventListener('click', function() {
-        const index = parseInt(this.getAttribute('data-index'));
-        positionCoordinates.splice(index, 1);
-        positionMap.removeLayer(positionMarkers[index]);
-        positionMarkers.splice(index, 1);
-        renderPositionList();
-    });
-    
-    // Clear inputs
-    document.getElementById('position-lat').value = '';
-    document.getElementById('position-lng').value = '';
-    
-    // Zoom to show all markers
-    if (positionMarkers.length > 0) {
-        const group = new L.featureGroup(positionMarkers);
-        positionMap.fitBounds(group.getBounds());
-    }
-});
-
-function renderPositionList() {
-    const container = document.getElementById('positions-container');
-    container.innerHTML = '';
-    
-    positionCoordinates.forEach((pos, index) => {
-        const positionElement = document.createElement('div');
-        positionElement.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
-        positionElement.innerHTML = `
-            <div>
-                <strong>Position ${index + 1}</strong>
-                <div class="text-muted small">${pos.lat.toFixed(6)}, ${pos.lng.toFixed(6)}</div>
-            </div>
-            <button class="btn btn-sm btn-outline-danger remove-position" data-index="${index}">
-                &times;
-            </button>
-        `;
-        container.appendChild(positionElement);
-        
-        // Add remove handler
-        positionElement.querySelector('.remove-position').addEventListener('click', function() {
-            const idx = parseInt(this.getAttribute('data-index'));
-            positionCoordinates.splice(idx, 1);
-            positionMap.removeLayer(positionMarkers[idx]);
-            positionMarkers.splice(idx, 1);
-            renderPositionList();
-        });
-    });
-}
-
-    async function saveTrip() {
-        const tripName = document.getElementById('trip-name').value;
-
-        const startTimestamp = new Date(document.getElementById('start-timestamp').value).getTime() / 1000;
-        const endTimestamp = new Date(document.getElementById('end-timestamp').value).getTime() / 1000;
-        const distance = parseFloat(document.getElementById('trip-distance').value);
-        const topSpeed = parseInt(document.getElementById('top-speed-input').value);
-
-        if (!tripName || !startTimestamp || !endTimestamp || isNaN(distance) || isNaN(topSpeed)) {
-            alert("Please fill all required fields with valid values");
-            return;
-        }
-
-        const saveSpinner = document.getElementById('save-spinner');
-        saveSpinner.style.display = 'inline-block';
-
-        const newTrip = {
-            name: tripName,
-            start_timestamp: startTimestamp,
-            end_timestamp: endTimestamp,
-            start_timestamp_string: formatEpochFilenameLocal(startTimestamp),
-            end_timestamp_string: formatFirebaseTimestamp(endTimestamp),
-            trip_distance: distance,
-            top_speed: topSpeed,
-            trip_duration: endTimestamp - startTimestamp,
-            trip_locations: positionCoordinates.length > 0 ? positionCoordinates : null,
-            trip_locations_count: positionCoordinates.length
-        };
-
-        try {
-            const r = await apiFetch(`${API_BASE}/trips`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newTrip)
-            });
-
-            if (r.status === 409) {
-            const body = await r.json().catch(() => null);
-            alert(`Trip already exists (${body?.id || newTrip.start_timestamp_string}).`);
-            return;
-            }
-
-            if (!r.ok) throw new Error(await r.text());
-
-            document.getElementById('trip-form').reset();
-            positionCoordinates = [];
-            positionMarkers = [];
-            document.getElementById('positions-container').innerHTML = '';
-            addTripModal.hide();
-
-            await loadTrips();
-        } catch (e) {
-            console.error("Error saving trip:", e);
-            alert("Error saving trip: " + e.message);
-        } finally {
-            saveSpinner.style.display = 'none';
-        }
-        }
-
-        // filename format: YYYY-MM-DD_HH-MM-SS (local time)
-        function formatEpochFilenameLocal(tsSec) {
-        const d = new Date(tsSec * 1000);
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
-        }
-
-        
-        // Global variables
-        let trips = [];
-        let selectedTrip = null;
-        let markers = [];
-        let polyline = null;
-        let addTripModal = null;
-        let sidebarOpen = true;
-        let diagnosticOpen = false;
-        let configOpen = false;
-        let bleDevice = null;
-        let bleServer = null;
-        let bleService = null;
-        let bleCharacteristic = null;
-        let diagnosticPollTimer = null;
-        let diagnosticReading = false;
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const bleServiceUuid = '19b10000-e8f2-537e-4f6c-d104768a1214';
-        const bleTextDecoder = new TextDecoder();
-        const bleTextEncoder = new TextEncoder();
-        const defaultNotifyCharacteristicUuid = '19b10001-e8f2-537e-4f6c-d104768a1214'; // set to your notify characteristic
-        const PID_CHUNK0_UUID = '19b1001d-e8f2-537e-4f6c-d104768a1214';
-        const PID_CHUNK1_UUID = '19b1001e-e8f2-537e-4f6c-d104768a1214';
-        const PID_NAMES = {
-            0x00: 'Supported PIDs 00-1F',
-            0x01: 'Monitor status since DTC clear',
-            0x02: 'Freeze DTC',
-            0x03: 'Fuel system status',
-            0x04: 'Calculated engine load',
-            0x05: 'Engine coolant temperature',
-            0x06: 'Short-term fuel trim Bank 1',
-            0x07: 'Long-term fuel trim Bank 1',
-            0x08: 'Short-term fuel trim Bank 2',
-            0x09: 'Long-term fuel trim Bank 2',
-            0x0A: 'Fuel pressure',
-            0x0B: 'Intake manifold absolute pressure',
-            0x0C: 'Engine RPM',
-            0x0D: 'Vehicle speed',
-            0x0E: 'Timing advance',
-            0x0F: 'Intake air temperature',
-            0x10: 'MAF air flow rate',
-            0x11: 'Throttle position',
-            0x12: 'Commanded secondary air',
-            0x13: 'O2 sensors present (banks 1-2)',
-            0x14: 'O2 S1 B1 voltage / STFT',
-            0x15: 'O2 S2 B1 voltage / STFT',
-            0x16: 'O2 S3 B1 voltage / STFT',
-            0x17: 'O2 S4 B1 voltage / STFT',
-            0x18: 'O2 S1 B2 voltage / STFT',
-            0x19: 'O2 S2 B2 voltage / STFT',
-            0x1A: 'O2 S3 B2 voltage / STFT',
-            0x1B: 'O2 S4 B2 voltage / STFT',
-            0x1C: 'OBD standard the vehicle conforms to',
-            0x1D: 'O2 sensors present (banks)',
-            0x1E: 'Auxiliary input status',
-            0x1F: 'Run time since engine start',
-            0x20: 'Supported PIDs 21-40',
-            0x21: 'Distance traveled with MIL on',
-            0x22: 'Fuel rail pressure (vacuum reference)',
-            0x23: 'Fuel rail gauge pressure (diesel/direct)',
-            0x24: 'O2 S1 wideband lambda (eq ratio / V)',
-            0x25: 'O2 S2 wideband lambda (eq ratio / V)',
-            0x26: 'O2 S3 wideband lambda (eq ratio / V)',
-            0x27: 'O2 S4 wideband lambda (eq ratio / V)',
-            0x28: 'O2 S5 wideband lambda (eq ratio / V)',
-            0x29: 'O2 S6 wideband lambda (eq ratio / V)',
-            0x2A: 'O2 S7 wideband lambda (eq ratio / V)',
-            0x2B: 'O2 S8 wideband lambda (eq ratio / V)',
-            0x2C: 'Commanded EGR',
-            0x2D: 'EGR error',
-            0x2E: 'Commanded evaporative purge',
-            0x2F: 'Fuel level input',
-            0x30: 'Warm-ups since DTC clear',
-            0x31: 'Distance traveled since DTC clear',
-            0x32: 'Evap system vapor pressure',
-            0x33: 'Barometric pressure',
-            0x34: 'O2 S1 wideband lambda (current)',
-            0x35: 'O2 S2 wideband lambda (current)',
-            0x36: 'O2 S3 wideband lambda (current)',
-            0x37: 'O2 S4 wideband lambda (current)',
-            0x38: 'O2 S5 wideband lambda (current)',
-            0x39: 'O2 S6 wideband lambda (current)',
-            0x3A: 'O2 S7 wideband lambda (current)',
-            0x3B: 'O2 S8 wideband lambda (current)',
-            0x3C: 'Catalyst temperature B1S1',
-            0x3D: 'Catalyst temperature B2S1',
-            0x3E: 'Catalyst temperature B1S2',
-            0x3F: 'Catalyst temperature B2S2',
-            0x40: 'Supported PIDs 41-60',
-            0x41: 'Monitor status this drive cycle',
-            0x42: 'Control module voltage',
-            0x43: 'Absolute load value',
-            0x44: 'Commanded equivalence ratio',
-            0x45: 'Relative throttle position',
-            0x46: 'Ambient air temperature',
-            0x47: 'Absolute throttle position B',
-            0x48: 'Absolute throttle position C',
-            0x49: 'Accelerator pedal position D',
-            0x4A: 'Accelerator pedal position E',
-            0x4B: 'Accelerator pedal position F',
-            0x4C: 'Commanded throttle actuator',
-            0x4D: 'Time run with MIL on',
-            0x4E: 'Time since DTCs cleared',
-            0x4F: 'Max values for eq ratio, O2, MAP',
-            0x50: 'Fuel type',
-            0x51: 'Ethanol fuel percentage',
-            0x52: 'Absolute evap system vapor pressure',
-            0x53: 'Evap system vapor pressure',
-            0x54: 'ST secondary O2 trim B1/B3',
-            0x55: 'LT secondary O2 trim B1/B3',
-            0x56: 'ST secondary O2 trim B2/B4',
-            0x57: 'LT secondary O2 trim B2/B4',
-            0x58: 'Fuel rail absolute pressure',
-            0x59: 'Relative accelerator pedal position',
-            0x5A: 'Hybrid battery pack remaining life',
-            0x5B: 'Engine oil temperature',
-            0x5C: 'Fuel injection timing',
-            0x5D: 'Engine fuel rate',
-            0x5E: 'Emission requirements (design)',
-            0x5F: 'GM proprietary / reserved (0x5F)',
-            0x60: 'Supported PIDs 61-80',
-            0x61: 'Driver demand engine percent torque',
-            0x62: 'Actual engine percent torque',
-            0x63: 'Engine reference torque',
-            0x64: 'Engine percent torque data (idle/points)',
-            0x65: 'Aux input/output supported (GM)',
-            0x66: 'Mass air flow sensor high-res (GM)',
-            0x67: 'Engine coolant temp high-res (GM)',
-            0x68: 'Intake air temp high-res (GM)',
-            0x69: 'Commanded EGR / EGR error (GM)',
-            0x6A: 'Evap purge flow (GM)',
-            0x6B: 'Turbo / supercharger boost (GM)',
-            0x6C: 'Charge air cooler outlet temp (GM)',
-            0x6D: 'Exhaust gas temperature sensor (GM)',
-            0x6E: 'Diesel particulate filter temp/pressure (GM)',
-            0x6F: 'Engine friction percent torque',
-            0x70: 'GM proprietary / reserved (0x70)',
-            0xc9: 'Adapter Temperature',
-            0xcA: 'Adapter Humidity'
-        };
-        const BASE_PID_MAX = 0x70;
-        const basePids = Array.from({ length: BASE_PID_MAX + 1 }, (_, value) => value);
-        const namedPids = Object.keys(PID_NAMES)
-            .map(k => parseInt(k, 0)) // allow hex-style keys like 0xc9
-            .filter(n => !Number.isNaN(n));
-        const PID_OPTIONS = Array.from(new Set([...basePids, ...namedPids]))
-            .sort((a, b) => a - b)
-            .map(value => {
-                const hex = value.toString(16).padStart(2, '0').toUpperCase();
-                const name = PID_NAMES[value] || `PID ${hex}`;
-                return { value, label: `${hex} - ${name}` };
-            });
-        let pidChunk0 = null;
-        let pidChunk1 = null;
-        let pidRequestList = new Uint8Array(40);
-        let pidList = [];
-        // One characteristic per metric (fill in your device UUIDs)
-        const bleCharacteristicUuids = {
-            time:              '19b10001-e8f2-537e-4f6c-d104768a1214',
-            gpsFix:            '19b10002-e8f2-537e-4f6c-d104768a1214',
-            gpsSats:           '19b10003-e8f2-537e-4f6c-d104768a1214',
-            gpsSpeed:          '19b10004-e8f2-537e-4f6c-d104768a1214',
-
-            wifiStatus:        '19b10005-e8f2-537e-4f6c-d104768a1214',
-            wifiIp:            '19b10006-e8f2-537e-4f6c-d104768a1214',
-            wifiSignal:        '19b10007-e8f2-537e-4f6c-d104768a1214',
-
-            obdProtocol:       '19b10008-e8f2-537e-4f6c-d104768a1214',
-
-            uploadStage:       '19b10009-e8f2-537e-4f6c-d104768a1214',
-            uploadInProgress:  '19b1000a-e8f2-537e-4f6c-d104768a1214',
-            uploadCurrentIdx:  '19b1000b-e8f2-537e-4f6c-d104768a1214',
-            uploadFiles:       '19b1000c-e8f2-537e-4f6c-d104768a1214',
-
-            logStatus:         '19b1000d-e8f2-537e-4f6c-d104768a1214',
-
-            tripDistance:      '19b1000e-e8f2-537e-4f6c-d104768a1214',
-            tripPoints:        '19b1000f-e8f2-537e-4f6c-d104768a1214',
-            tripStartTs:       '19b10010-e8f2-537e-4f6c-d104768a1214',
-
-            carEngOn:          '19b10011-e8f2-537e-4f6c-d104768a1214',
-            carRpm:            '19b10012-e8f2-537e-4f6c-d104768a1214',
-            carKmph:           '19b10013-e8f2-537e-4f6c-d104768a1214',
-            carGpsKmph:        '19b10014-e8f2-537e-4f6c-d104768a1214',
-            carTemp:           '19b10015-e8f2-537e-4f6c-d104768a1214',
-            carFuel:           '19b10016-e8f2-537e-4f6c-d104768a1214',
-            carBatt:           '19b10017-e8f2-537e-4f6c-d104768a1214',
-            carLpg:            '19b10018-e8f2-537e-4f6c-d104768a1214',
-
-            ramFreeKb:         '19b10019-e8f2-537e-4f6c-d104768a1214',
-            ramTotalKb:        '19b1001a-e8f2-537e-4f6c-d104768a1214',
-            ramUsedPct:        '19b1001b-e8f2-537e-4f6c-d104768a1214',
-            gpsPos:            '19b1001c-e8f2-537e-4f6c-d104768a1214'
-        };
-        const diagnosticPieces = {
-            time: null,
-            gpsFix: null,
-            gpsSats: null,
-            gpsSpeed: null,
-            gpsPos: null,
-            wifiStatus: null,
-            ip: null,
-            signal: null,
-            obdProtocol: null,
-            uploadStage: null,
-            uploadInProgress: null,
-            uploadCurrentIdx: null,
-            uploadFiles: null,
-            logStatus: null,
-            tripDistance: null,
-            points: null,
-            startTs: null,
-            carEngOn: null,
-            rpm: null,
-            kmph: null,
-            gpsKmph: null,
-            temp: null,
-            fuel: null,
-            batt: null,
-            lpg: null,
-            ramFreeKb: null,
-            ramTotalKb: null,
-            ramUsedPct: null
-        };
-        const diagnosticData = {
-            time: '--',
-            gpsFix: '--',
-            gpsSats: '--',
-            gpsSpeed: '--',
-            gpsPos: null,
-            wifi: '--',
-            ip: '--',
-            signal: '--',
-            obd: '--',
-            upload: '--',
-            log: '--',
-            car: '--',
-            batt: '--',
-            ram: '--'
-        };
-
-        document.getElementById('dashboard-content').style.display = 'flex';
-        document.getElementById('user-info').style.display = 'none';
-
-        // Load trips immediately
-        loadTrips();
-
-        // Initialize modal
-        document.addEventListener('DOMContentLoaded', function() {
-            addTripModal = new bootstrap.Modal(document.getElementById('addTripModal'));
-            
-            // Set default timestamps
-            const now = new Date();
-            const formattedDate = now.toISOString().slice(0, 16);
-            document.getElementById('start-timestamp').value = formattedDate;
-            document.getElementById('end-timestamp').value = formattedDate;
-
-            // Sidebar toggle
-            const sidebar = document.querySelector('.sidebar');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            document.body.classList.toggle('sidebar-open', sidebarOpen);
-            toggleBtn.addEventListener('click', () => {
-                sidebarOpen = !sidebarOpen;
-                sidebar.classList.toggle('hidden', !sidebarOpen);
-                document.body.classList.toggle('sidebar-open', sidebarOpen);
-                setTimeout(() => map.invalidateSize(), 120);
-            });
-
-            // Diagnostics toggle
-            const diagnosticPanel = document.getElementById('diagnostic-panel');
-            const diagnosticToggle = document.getElementById('diagnostic-toggle');
-            diagnosticPanel.classList.add('hidden');
-            document.body.classList.toggle('diagnostic-open', diagnosticOpen);
-            diagnosticToggle.addEventListener('click', () => {
-                diagnosticOpen = !diagnosticOpen;
-                if (diagnosticOpen && configOpen) {
-                    configOpen = false;
-                    document.getElementById('config-panel').classList.add('hidden');
-                    document.body.classList.remove('config-open');
-                }
-                diagnosticPanel.classList.toggle('hidden', !diagnosticOpen);
-                document.body.classList.toggle('diagnostic-open', diagnosticOpen);
-                setTimeout(() => map.invalidateSize(), 120);
-            });
-
-            const configPanel = document.getElementById('config-panel');
-            const configToggle = document.getElementById('config-toggle');
-            configPanel.classList.add('hidden');
-            document.body.classList.toggle('config-open', configOpen);
-            configToggle.addEventListener('click', () => {
-                configOpen = !configOpen;
-                if (configOpen && diagnosticOpen) {
-                    diagnosticOpen = false;
-                    diagnosticPanel.classList.add('hidden');
-                    document.body.classList.remove('diagnostic-open');
-                }
-                configPanel.classList.toggle('hidden', !configOpen);
-                document.body.classList.toggle('config-open', configOpen);
-                setTimeout(() => map.invalidateSize(), 120);
-            });
-
-            const btnConnect = document.getElementById('ble-connect-btn');
-            const btnDisconnect = document.getElementById('ble-disconnect-btn');
-            const btnConnectConfig = document.getElementById('ble-connect-btn-config');
-            const btnDisconnectConfig = document.getElementById('ble-disconnect-btn-config');
-            if (btnConnect) btnConnect.addEventListener('click', connectBle);
-            if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectBle);
-            if (btnConnectConfig) btnConnectConfig.addEventListener('click', connectBle);
-            if (btnDisconnectConfig) btnDisconnectConfig.addEventListener('click', disconnectBle);
-
-            hydratePidSelect();
-            renderPidList();
-            const pidAddBtn = document.getElementById('pid-add-btn');
-            if (pidAddBtn) pidAddBtn.addEventListener('click', handlePidAdd);
-            const pidRefreshBtn = document.getElementById('pid-refresh-btn');
-            if (pidRefreshBtn) pidRefreshBtn.addEventListener('click', () => syncPidListFromDevice().catch(console.error));
-            const pidClearBtn = document.getElementById('pid-clear-btn');
-            if (pidClearBtn) pidClearBtn.addEventListener('click', () => clearPidList(true));
-        });
-
-        // BLE Diagnostics Helpers
-        function setBleStatus(text, tone = 'secondary') {
-            const statusText = document.getElementById('ble-status-text');
-            const statusDot = document.getElementById('ble-status-dot');
-            const badge = document.getElementById('ble-connection-badge');
-            const toneClass = tone === 'warning' ? 'bg-warning text-dark' : `bg-${tone}`;
-
-            if (statusText) statusText.textContent = text;
-            if (statusDot) statusDot.className = `status-dot ${toneClass}`;
-            if (badge) badge.className = `badge ${toneClass}`;
-            if (badge) badge.textContent = text;
-        }
-
-        function logBle(message) {
-            const logEl = document.getElementById('ble-log');
-            if (!logEl) return;
-            const now = new Date().toLocaleTimeString();
-            const formatted = `[${now}] ${message}`;
-            if (logEl.textContent === 'Waiting for data...') {
-                logEl.textContent = '';
-            }
-            logEl.textContent += formatted + '\n';
-            logEl.scrollTop = logEl.scrollHeight;
-        }
-
-        function setBleControls({ connected = false, connecting = false } = {}) {
-            const connectBtn = document.getElementById('ble-connect-btn');
-            const disconnectBtn = document.getElementById('ble-disconnect-btn');
-            const connectBtnConfig = document.getElementById('ble-connect-btn-config');
-            const disconnectBtnConfig = document.getElementById('ble-disconnect-btn-config');
-            const sendBtn = document.getElementById('ble-send-btn');
-
-            if (connectBtn) connectBtn.disabled = connecting || connected;
-            if (disconnectBtn) disconnectBtn.disabled = !connected;
-            if (connectBtnConfig) connectBtnConfig.disabled = connecting || connected;
-            if (disconnectBtnConfig) disconnectBtnConfig.disabled = !connected;
-            if (sendBtn) sendBtn.disabled = !connected;
-        }
-
-        function hydratePidSelect() {
-            const select = document.getElementById('pid-select');
-            if (!select) return;
-            select.innerHTML = PID_OPTIONS.map(opt => {
-                const hex = opt.value.toString(16).padStart(2, '0').toUpperCase();
-                return `<option value="${hex}">${opt.label}</option>`;
-            }).join('');
-        }
-
-        function pidLabel(pidVal) {
-            const match = PID_OPTIONS.find(p => p.value === pidVal);
-            const hex = pidVal.toString(16).padStart(2, '0').toUpperCase();
-            return match ? match.label : `${hex} - PID`;
-        }
-
-        function updatePidBadge() {
-            const badge = document.getElementById('pid-count-badge');
-            if (badge) badge.textContent = `${pidList.length}/40`;
-        }
-
-        function renderPidList() {
-            const listEl = document.getElementById('pid-list');
-            if (!listEl) return;
-            listEl.innerHTML = '';
-
-            if (!pidList.length) {
-                listEl.innerHTML = '<div class="pid-empty">No PIDs yet.</div>';
-                updatePidBadge();
-                return;
-            }
-
-            pidList.forEach((pidVal, index) => {
-                const pill = document.createElement('div');
-                pill.className = 'pid-pill';
-                pill.innerHTML = `
-                    <span>${pidLabel(pidVal)}</span>
-                    <button aria-label="Remove PID" data-idx="${index}">&times;</button>
-                `;
-                pill.querySelector('button').addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    pidList.splice(index, 1);
-                    renderPidList();
-                    await writePidListToDevice();
-                });
-                listEl.appendChild(pill);
-            });
-            updatePidBadge();
-        }
-
-        async function handlePidAdd() {
-            const select = document.getElementById('pid-select');
-            if (!select) return;
-            const pidVal = parseInt(select.value, 16);
-            if (Number.isNaN(pidVal)) return;
-            if (pidList.length >= 40) {
-                showNotification('PID list is full (40 bytes).', 'warning');
-                return;
-            }
-            if (pidList.includes(pidVal)) {
-                showNotification('PID already in the list.', 'warning');
-                return;
-            }
-            pidList.push(pidVal & 0xFF);
-            renderPidList();
-            await writePidListToDevice();
-        }
-
-        async function ensurePidCharacteristics() {
-            if (!bleService) throw new Error('BLE service not ready');
-            if (!pidChunk0) pidChunk0 = await bleService.getCharacteristic(PID_CHUNK0_UUID);
-            if (!pidChunk1) pidChunk1 = await bleService.getCharacteristic(PID_CHUNK1_UUID);
-        }
-
-        function resetPidState() {
-            pidChunk0 = null;
-            pidChunk1 = null;
-            pidRequestList = new Uint8Array(40);
-            pidList = [];
-            renderPidList();
-        }
-
-        async function syncPidListFromDevice() {
-            if (!bleDevice || !bleDevice.gatt?.connected || !bleService) return;
-            try {
-                await ensurePidCharacteristics();
-                const v0 = new Uint8Array((await pidChunk0.readValue()).buffer);
-                const v1 = new Uint8Array((await pidChunk1.readValue()).buffer);
-                const combined = new Uint8Array(40);
-                combined.set(v0.slice(0, 20), 0);
-                combined.set(v1.slice(0, 20), 20);
-                pidRequestList = combined;
-                const entries = Array.from(combined);
-                const lastNonZero = entries.reduce((acc, val, idx) => val !== 0 ? idx : acc, -1);
-                pidList = lastNonZero === -1 ? [] : entries.slice(0, lastNonZero + 1);
-                renderPidList();
-                logBle(`PID list read (${pidList.length}): ${toHex(combined)}`);
-            } catch (err) {
-                console.warn('PID list read failed', err);
-                logBle(`PID list read failed: ${err.message}`);
-            }
-        }
-
-        async function clearPidList(shouldWrite = false) {
-            pidList = [];
-            pidRequestList = new Uint8Array(40);
-            renderPidList();
-            if (shouldWrite) {
-                try {
-                    await writePidListToDevice();
-                } catch (err) {
-                    console.warn('PID clear failed', err);
-                }
-            }
-        }
-
-        async function writePidListToDevice() {
-            if (!bleDevice || !bleDevice.gatt?.connected) {
-                showNotification('Connect to BLE to write PID list.', 'warning');
-                return;
-            }
-            try {
-                await ensurePidCharacteristics();
-                pidRequestList = new Uint8Array(40);
-                pidList.slice(0, 40).forEach((pidVal, idx) => {
-                    pidRequestList[idx] = pidVal & 0xFF;
-                });
-                const first = pidRequestList.slice(0, 20);
-                const second = pidRequestList.slice(20, 40);
-                if (pidChunk0.writeValueWithoutResponse) {
-                    await pidChunk0.writeValueWithoutResponse(first);
-                } else {
-                    await pidChunk0.writeValue(first);
-                }
-                if (pidChunk1.writeValueWithoutResponse) {
-                    await pidChunk1.writeValueWithoutResponse(second);
-                } else {
-                    await pidChunk1.writeValue(second);
-                }
-                logBle(`PID list wrote (${pidList.length}): ${toHex(pidRequestList)}`);
-                showNotification('PID list updated', 'info', 2500);
-            } catch (err) {
-                console.error('PID list write failed', err);
-                logBle(`PID list write failed: ${err.message}`);
-                showNotification('Failed to write PID list: ' + err.message, 'error', 4000);
-            }
-        }
-
-        async function connectBle() {
-            const serviceUuid = bleServiceUuid;
-            const characteristicUuid = defaultNotifyCharacteristicUuid;
-
-            if (!navigator.bluetooth) {
-                alert('Web Bluetooth API is not supported in this browser.');
-                return;
-            }
-            if (!serviceUuid || !characteristicUuid) {
-                alert('Please provide the Service UUID (and set notify UUID in code).');
-                return;
-            }
-
-            setBleStatus('Searching...', 'warning');
-            setBleControls({ connecting: true });
-
-            try {
-                const available = await navigator.bluetooth.getAvailability?.();
-                if (available === false) {
-                    alert('Bluetooth not available. On Android, enable Bluetooth and Location, and use Chrome.');
-                    setBleControls({ connected: false });
-                    setBleStatus('Disconnected', 'secondary');
-                    return;
-                }
-
-                if (!bleDevice) {
-                    const device = await navigator.bluetooth.requestDevice({
-                        acceptAllDevices: false,
-                        filters: [
-                            {services: [serviceUuid]}
-                        ],
-                        optionalServices: [serviceUuid]
-                    });
-                    bleDevice = device;
-                    bleDevice.addEventListener('gattserverdisconnected', handleBleDisconnect);
-                }
-
-                // Reconnect if not connected
-                if (!bleDevice.gatt.connected) {
-                    bleServer = await bleDevice.gatt.connect();
-                } else {
-                    bleServer = bleDevice.gatt;
-                }
-
-                bleService = await bleServer.getPrimaryService(serviceUuid);
-
-                // Prefer explicit characteristic, else pick the first readable characteristic
-                try {
-                    bleCharacteristic = await bleService.getCharacteristic(characteristicUuid);
-                } catch (e) {
-                    const allChars = await bleService.getCharacteristics();
-                    bleCharacteristic = allChars.find(c => c.properties?.read) || allChars[0];
-                    logBle(`Readable characteristic fallback: ${bleCharacteristic?.uuid || 'none'}`);
-                }
-
-                document.getElementById('ble-device-name').textContent = bleDevice.name || 'Unnamed device';
-                setBleStatus('Connected', 'success');
-                setBleControls({ connected: true });
-                logBle('Connected to device');
-
-                // Attempt to read diagnostic values from individual characteristics (if UUIDs are set)
-                fetchDiagnosticsFromCharacteristics(serviceUuid);
-                startDiagnosticPolling(serviceUuid);
-                await syncPidListFromDevice();
-            } catch (error) {
-                console.error('BLE connect error', error);
-                logBle(`Connection failed: ${error.message}`);
-                setBleStatus('Disconnected', 'secondary');
-                setBleControls({ connected: false });
-                // Drop cached service so next attempt re-requests
-                bleService = null;
-                bleCharacteristic = null;
-                stopDiagnosticPolling();
-            }
-        }
-
-        async function disconnectBle() {
-            try {
-                if (bleCharacteristic) {
-                    await bleCharacteristic.stopNotifications();
-                }
-            } catch (err) {
-                console.warn('Error stopping notifications', err);
-            }
-
-            if (bleDevice && bleDevice.gatt.connected) {
-                bleDevice.gatt.disconnect();
-            }
-
-            bleDevice = null;
-            bleCharacteristic = null;
-            bleServer = null;
-            bleService = null;
-            stopDiagnosticPolling();
-            resetPidState();
-            document.getElementById('ble-device-name').textContent = 'None';
-            setBleStatus('Disconnected', 'secondary');
-            setBleControls({ connected: false });
-            logBle('Disconnected');
-        }
-
-        function handleBleDisconnect() {
-            logBle('Device disconnected');
-            setBleStatus('Disconnected', 'secondary');
-            setBleControls({ connected: false });
-            bleCharacteristic = null;
-            bleServer = null;
-            bleDevice = null;
-            bleService = null;
-            stopDiagnosticPolling();
-            resetPidState();
-            clearLiveCarMarker();
-        }
-
-        async function sendBleCommand(command) {
-            if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) {
-                logBle('Not connected');
-                return;
-            }
-
-            const clean = (command || '').trim();
-            if (!clean) return;
-
-            try {
-                const data = bleTextEncoder.encode(clean + '\n');
-                if (bleCharacteristic.writeValueWithoutResponse) {
-                    await bleCharacteristic.writeValueWithoutResponse(data);
-                } else {
-                    await bleCharacteristic.writeValue(data);
-                }
-                logBle(`TX: ${clean}`);
-                const inputEl = document.getElementById('ble-send-input');
-                if (inputEl) inputEl.value = '';
-            } catch (error) {
-                console.error('Send error', error);
-                logBle(`Send failed: ${error.message}`);
-            }
-        }
-
-        // Parse and render diagnostic payloads (Random Nerd Tutorials style) from text content
-        function ingestDiagnosticText(text) {
-            if (!text || !text.includes('DEBUG DASHBOARD')) return;
-            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-            lines.forEach(line => {
-                if (line.startsWith('Time:')) {
-                    diagnosticPieces.time = line.replace('Time:', '').trim();
-                } else if (line.startsWith('GPS')) {
-                    diagnosticPieces.gpsFix = (line.match(/GPS\s*:\s*([^|]+)/i)?.[1] || '').trim();
-                    diagnosticPieces.gpsSats = line.match(/sats:([0-9]+)/i)?.[1] || diagnosticPieces.gpsSats;
-                    diagnosticPieces.gpsSpeed = line.match(/speed:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.gpsSpeed;
-                } else if (line.startsWith('WiFi')) {
-                    diagnosticPieces.wifiStatus = (line.match(/WiFi:\s*([^|]+)/i)?.[1] || '').trim();
-                    diagnosticPieces.ip = (line.match(/IP:([^|]+)/i)?.[1] || '').trim();
-                    diagnosticPieces.signal = line.match(/signal:([0-9]+%)/i)?.[1] || diagnosticPieces.signal;
-                } else if (line.startsWith('OBD')) {
-                    diagnosticPieces.obdProtocol = (line.match(/protocol:([\w-]*)/i)?.[1] || '').trim() || diagnosticPieces.obdProtocol;
-                } else if (line.startsWith('Upload')) {
-                    diagnosticPieces.uploadStage = line.match(/stage:([^|]+)/i)?.[1]?.trim() || diagnosticPieces.uploadStage;
-                    diagnosticPieces.uploadInProgress = line.match(/in_progress:([0-9]+)/i)?.[1] || diagnosticPieces.uploadInProgress;
-                    diagnosticPieces.uploadCurrentIdx = line.match(/current_idx:([-0-9]+)/i)?.[1] || diagnosticPieces.uploadCurrentIdx;
-                    diagnosticPieces.uploadFiles = line.match(/files:([0-9]+)/i)?.[1] || diagnosticPieces.uploadFiles;
-                } else if (line.startsWith('Log')) {
-                    diagnosticPieces.logStatus = line.match(/Log\s*:([^|]+)/i)?.[1]?.trim() || diagnosticPieces.logStatus;
-                    diagnosticPieces.tripDistance = line.match(/trip_dist:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.tripDistance;
-                    diagnosticPieces.points = line.match(/points:([0-9]+)/i)?.[1] || diagnosticPieces.points;
-                    diagnosticPieces.startTs = line.match(/start_ts:([0-9]+)/i)?.[1] || diagnosticPieces.startTs;
-                } else if (line.startsWith('Car')) {
-                    diagnosticPieces.carEngOn = line.match(/eng_on:([0-9]+)/i)?.[1] || diagnosticPieces.carEngOn;
-                    diagnosticPieces.rpm = line.match(/rpm:([0-9]+)/i)?.[1] || diagnosticPieces.rpm;
-                    diagnosticPieces.kmph = line.match(/kmph:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.kmph;
-                    diagnosticPieces.gpsKmph = line.match(/gps_kmph:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.gpsKmph;
-                    diagnosticPieces.temp = line.match(/temp:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.temp;
-                    diagnosticPieces.fuel = line.match(/fuel:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.fuel;
-                    diagnosticPieces.batt = line.match(/batt:([0-9.,]+)/i)?.[1]?.replace(',', '.') || diagnosticPieces.batt;
-                    diagnosticPieces.lpg = line.match(/lpg:([0-9]+)/i)?.[1] || diagnosticPieces.lpg;
-                } else if (line.startsWith('RAM')) {
-                    diagnosticPieces.ramFreeKb = line.match(/([0-9.,]+)KB free/i)?.[1]?.replace(',', '.') || diagnosticPieces.ramFreeKb;
-                    diagnosticPieces.ramTotalKb = line.match(/([0-9.,]+)KB total/i)?.[1]?.replace(',', '.') || diagnosticPieces.ramTotalKb;
-                    diagnosticPieces.ramUsedPct = line.match(/\(([0-9]+)% used\)/i)?.[1] || diagnosticPieces.ramUsedPct;
-                }
-            });
-            composeDiagnosticData();
-            renderDiagnosticData();
-        }
-
-        function renderDiagnosticData() {
-            const mapVals = {
-                'diag-time': diagnosticData.time,
-                'diag-gps-fix': diagnosticData.gpsFix,
-                'diag-gps-sats': diagnosticData.gpsSats,
-                'diag-gps-speed': diagnosticData.gpsSpeed,
-                'diag-wifi': diagnosticData.wifi,
-                'diag-ip': diagnosticData.ip,
-                'diag-signal': diagnosticData.signal,
-                'diag-obd': diagnosticData.obd,
-                'diag-upload': diagnosticData.upload,
-                'diag-log': diagnosticData.log,
-                'diag-car': diagnosticData.car,
-                'diag-batt': diagnosticData.batt,
-                'diag-ram': diagnosticData.ram
-            };
-            Object.entries(mapVals).forEach(([id, val]) => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.textContent = val || '--';
-                    // Blink the parent card when data changes
-                    const card = el.closest('.diag-card');
-                    if (card) {
-                        card.classList.remove('live-blink');
-                        void card.offsetWidth; // force reflow
-                        card.classList.add('live-blink');
-                        setTimeout(() => card.classList.remove('live-blink'), 400);
-                    }
-                }
-            });
-        }
-
-        // Read individual characteristics sequentially (one by one) and render
-        async function fetchDiagnosticsFromCharacteristics(serviceUuid) {
-            if (!bleService || diagnosticReading) return;
-            diagnosticReading = true;
-
-            const entries = [
-                ['time', bleCharacteristicUuids.time],
-                ['gpsFix', bleCharacteristicUuids.gpsFix],
-                ['gpsSats', bleCharacteristicUuids.gpsSats],
-                ['gpsSpeed', bleCharacteristicUuids.gpsSpeed],
-                ['gpsPos', bleCharacteristicUuids.gpsPos],
-                ['wifiStatus', bleCharacteristicUuids.wifiStatus],
-                ['ip', bleCharacteristicUuids.wifiIp],
-                ['signal', bleCharacteristicUuids.wifiSignal],
-                ['obdProtocol', bleCharacteristicUuids.obdProtocol],
-                ['uploadStage', bleCharacteristicUuids.uploadStage],
-                ['uploadInProgress', bleCharacteristicUuids.uploadInProgress],
-                ['uploadCurrentIdx', bleCharacteristicUuids.uploadCurrentIdx],
-                ['uploadFiles', bleCharacteristicUuids.uploadFiles],
-                ['logStatus', bleCharacteristicUuids.logStatus],
-                ['tripDistance', bleCharacteristicUuids.tripDistance],
-                ['points', bleCharacteristicUuids.tripPoints],
-                ['startTs', bleCharacteristicUuids.tripStartTs],
-                ['carEngOn', bleCharacteristicUuids.carEngOn],
-                ['rpm', bleCharacteristicUuids.carRpm],
-                ['kmph', bleCharacteristicUuids.carKmph],
-                ['gpsKmph', bleCharacteristicUuids.carGpsKmph],
-                ['temp', bleCharacteristicUuids.carTemp],
-                ['fuel', bleCharacteristicUuids.carFuel],
-                ['batt', bleCharacteristicUuids.carBatt],
-                ['lpg', bleCharacteristicUuids.carLpg],
-                ['ramFreeKb', bleCharacteristicUuids.ramFreeKb],
-                ['ramTotalKb', bleCharacteristicUuids.ramTotalKb],
-                ['ramUsedPct', bleCharacteristicUuids.ramUsedPct]
-            ];
-
-            try {
-                for (const [key, uuid] of entries) {
-                    if (!uuid || !uuid.trim()) continue;
-                    try {
-                        const c = await bleService.getCharacteristic(uuid.trim());
-                        const v = await c.readValue();
-                        diagnosticPieces[key] = bleTextDecoder.decode(v).trim() ?? diagnosticPieces[key];
-                    } catch (err) {
-                        console.warn('Read failed for', key, uuid, err);
-                    }
-                    await delay(50);
-                }
-
-                composeDiagnosticData();
-                renderDiagnosticData();
-            } finally {
-                diagnosticReading = false;
-            }
-        }
-
-        function startDiagnosticPolling(serviceUuid) {
-            stopDiagnosticPolling();
-            diagnosticPollTimer = setInterval(() => {
-                if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
-                    fetchDiagnosticsFromCharacteristics(serviceUuid);
-                }
-            }, 100);
-        }
-
-        function stopDiagnosticPolling() {
-            if (diagnosticPollTimer) {
-                clearInterval(diagnosticPollTimer);
-                diagnosticPollTimer = null;
-            }
-        }
-
-        function humanizeDiagnosticTime(value) {
-            if (!value) return 'N/A';
-            // If numeric epoch (seconds or ms), format to local string
-            const num = Number(value);
-            if (Number.isFinite(num)) {
-                const epochMs = num > 1e12 ? num : num * 1000;
-                const date = new Date(epochMs);
-                return isNaN(date.getTime()) ? String(value) : date.toLocaleString();
-            }
-            // Try Date parseable string
-            const parsed = new Date(value);
-            if (!isNaN(parsed.getTime())) return parsed.toLocaleString();
-            return String(value);
-        }
-
-        function composeDiagnosticData() {
-            diagnosticData.time = humanizeDiagnosticTime(diagnosticPieces.time || diagnosticData.time);
-            diagnosticData.gpsFix = diagnosticPieces.gpsFix || diagnosticData.gpsFix;
-            diagnosticData.gpsSats = diagnosticPieces.gpsSats || diagnosticData.gpsSats;
-            diagnosticData.gpsSpeed = diagnosticPieces.gpsSpeed ? `${diagnosticPieces.gpsSpeed} km/h` : diagnosticData.gpsSpeed;
-            diagnosticData.wifi = diagnosticPieces.wifiStatus || diagnosticData.wifi;
-            diagnosticData.ip = diagnosticPieces.ip || diagnosticData.ip;
-            diagnosticData.signal = diagnosticPieces.signal || diagnosticData.signal;
-            diagnosticData.obd = diagnosticPieces.obdProtocol || diagnosticData.obd;
-
-            const upStage = diagnosticPieces.uploadStage;
-            const upProg = diagnosticPieces.uploadInProgress;
-            const upIdx = diagnosticPieces.uploadCurrentIdx;
-            const upFiles = diagnosticPieces.uploadFiles;
-            if (upStage || upProg || upIdx || upFiles) {
-                diagnosticData.upload = `Stage ${upStage ?? '-'} | in_progress ${upProg ?? '-'} | idx ${upIdx ?? '-'} | files ${upFiles ?? '-'}`;
-            }
-
-            const logStatus = diagnosticPieces.logStatus;
-            const tripDist = diagnosticPieces.tripDistance;
-            const points = diagnosticPieces.points;
-            const startTs = diagnosticPieces.startTs;
-            if (logStatus || tripDist || points || startTs) {
-                diagnosticData.log = `${logStatus ?? '-'} | dist ${tripDist ?? '-'} km | points ${points ?? '-'} | start ${startTs ?? '-'}`;
-            }
-
-            const gpsPosParsed = parseGpsPosition(diagnosticPieces.gpsPos);
-            if (gpsPosParsed) {
-                diagnosticData.gpsPos = gpsPosParsed;
-            }
-
-            const car = diagnosticPieces;
-            if (car.rpm || car.kmph || car.gpsKmph || car.temp || car.fuel || car.lpg || car.carEngOn) {
-                diagnosticData.car = `eng:${car.carEngOn ?? '-'} rpm:${car.rpm ?? '-'} kmph:${car.kmph ?? '-'} gps:${car.gpsKmph ?? '-'} temp:${car.temp ?? '-'}C fuel:${car.fuel ?? '-'}% lpg:${car.lpg ?? '-'}`;
-            }
-            if (car.batt) diagnosticData.batt = `${car.batt} V`;
-
-            if (car.ramFreeKb || car.ramTotalKb || car.ramUsedPct) {
-                diagnosticData.ram = `${car.ramFreeKb ?? '-'}KB / ${car.ramTotalKb ?? '-'}KB (${car.ramUsedPct ?? '-'}% used)`;
-            }
-
-            updateLiveCarMarkerIfNeeded();
-        }
-
-        // Add Trip Button
-        document.getElementById('add-trip-btn').addEventListener('click', () => {
-            addTripModal.show();
-        });
-
-        // Save Trip Button
-        document.getElementById('save-trip').addEventListener('click', saveTrip);
-
-        async function loadTrips() {
-            try {
-                const r = await apiFetch(`${API_BASE}/trips`);
-                if (!r.ok) throw new Error(await r.text());
-                trips = await r.json();
-                renderTrips();
-                updateStats();
-            } catch (e) {
-                console.error("Error loading trips:", e);
-                document.getElementById('trips-list').innerHTML = `
-                <div class="alert alert-danger">
-                    Error loading trips: ${e.message}
-                </div>
-                `;
-            }
-            }
-
-        
-
-        // Format timestamp for Firebase
-        function formatFirebaseTimestamp(timestamp) {
-            const date = new Date(timestamp * 1000);
-            return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}:${pad(date.getHours())}.${pad(date.getMinutes())}.${pad(date.getSeconds())}`;
-        }
-
-        function pad(num) {
-            return num.toString().padStart(2, '0');
-        }
-
-        // Render trips list
-        function renderTrips() {
-            const tripsList = document.getElementById('trips-list');
-            const tripCount = document.getElementById('trip-count');
-            
-            if (trips.length === 0) {
-                tripsList.innerHTML = '<p>No trips found. Add your first trip!</p>';
-                tripCount.textContent = '0 trips total';
-                return;
-            }
-            
-            tripCount.textContent = `${trips.length} trips total`;
-            
-            tripsList.innerHTML = trips.map(trip => {
-                const distance = trip.trip_distance || 0;
-                const durationSec = trip.trip_duration || trip['trip duration'] || 0;
-                const avgSpeed = durationSec > 0 ? `${(distance / (durationSec / 3600)).toFixed(1)} km/h` : 'N/A';
-                const avgConsumptionRaw = trip.avg_consumption ?? trip.average_consumption ?? trip.avg_lpkm ?? trip.average_lpkm ?? null;
-                const avgConsumption = avgConsumptionRaw !== null && avgConsumptionRaw !== undefined
-                    ? `${Number(avgConsumptionRaw).toFixed(1)} L/km`
-                    : 'N/A';
-                // const maxConsumption = formatFixed(trip.max_consumption, 1, 'N/A');
-                const maxConsumption = formatFixed(trip.max_consumption, 1, '0.0');
-
-                return `
-                <div class="card trip-card mb-2 ${selectedTrip?.id === trip.id ? 'active-trip' : ''}" data-id="${trip.id}">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div class="flex-grow-1">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <h6 class="card-title mb-0">${formatTimestamp(trip.start_timestamp)}</h6>
-                                </div>
-                                <div class="trip-time">
-                                    ${trip.name || formatTripId(trip.id)}
-                                </div>
-                                <div class="trip-stats d-flex flex-wrap text-muted mt-1">
-                                    <span>Dur ${formatDuration(durationSec)}</span>
-                                    <span>Dist ${trip.trip_distance ? trip.trip_distance.toFixed(2) + ' km' : 'N/A'}</span>
-                                    <span>Top ${trip.top_speed || 0} km/h</span>
-                                    <span>Avg ${avgSpeed}</span>
-                                    <span>Max Cons ${maxConsumption}</span>
-                                    <span>Avg Cons ${avgConsumption}</span>
-                                </div>
-                            </div>
-                            <button class="btn btn-sm btn-outline-danger delete-trip" data-id="${trip.id}">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('');
-            
-            // Add click event listeners
-            document.querySelectorAll('.trip-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const tripId = this.getAttribute('data-id');
-                    selectTrip(tripId);
-                });
-            });
-
-            // Add this at the end of your renderTrips() function
-            document.querySelectorAll('.delete-trip').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Prevent triggering the trip selection
-                    const tripId = this.getAttribute('data-id');
-                    deleteTrip(tripId);
-                });
-            });
-        }
-
-        async function deleteTrip(tripId) {
-            if (!confirm('Are you sure you want to delete this trip? This action cannot be undone.')) return;
-
-            const deleteBtn = document.querySelector(`.delete-trip[data-id="${tripId}"]`);
-            const originalText = deleteBtn ? deleteBtn.innerHTML : '';
-            if (deleteBtn) {
-                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
-                deleteBtn.disabled = true;
-            }
-
-            try {
-                const r = await apiFetch(`${API_BASE}/trips/${tripId}`, { method: 'DELETE' });
-                if (!r.ok) throw new Error(await r.text());
-
-                // if current selected, clear
-                if (selectedTrip) {
-                const selectedId = selectedTrip.start_timestamp_string || selectedTrip.id;
-                if (selectedId === tripId) {
-                    selectedTrip = null;
-                    document.getElementById('trip-details').style.display = 'none';
-                    clearMap();
-                    map.setView([0, 0], 2);
-                }
-                }
-
-                await loadTrips();
-            } catch (e) {
-                console.error(e);
-                alert('Failed to delete trip: ' + e.message);
-            } finally {
-                if (deleteBtn) {
-                deleteBtn.innerHTML = originalText;
-                deleteBtn.disabled = false;
-                }
-            }
-            }
-
-        
-        // Format trip ID for display
-        function formatTripId(id) {
-            return id.replace(/_/g, ' ').replace(/__/g, ':');
-        }
-
-        async function selectTrip(tripId) {
-            try {
-                const r = await apiFetch(`${API_BASE}/trips/${tripId}`);
-                if (!r.ok) throw new Error(await r.text());
-                selectedTrip = await r.json();
-            } catch (e) {
-                console.error(e);
-                alert("Failed to load trip: " + e.message);
-                return;
-            }
-
-            // UI highlight (keep your existing code)
-            document.querySelectorAll('.trip-card').forEach(card => {
-                card.classList.toggle('active-trip', card.getAttribute('data-id') === tripId);
-            });
-
-            document.getElementById('trip-details').style.display = 'block';
-            document.getElementById('top-speed').textContent = `${selectedTrip.top_speed || 0} km/h`;
-            const tripDurationSeconds = selectedTrip.trip_duration
-                || selectedTrip['trip duration']
-                || ((selectedTrip.end_timestamp && selectedTrip.start_timestamp)
-                    ? (selectedTrip.end_timestamp - selectedTrip.start_timestamp)
-                    : null);
-            document.getElementById('trip-duration').textContent = formatDurationCompact(tripDurationSeconds);
-            const maxConsumption = formatFixed(selectedTrip.max_consumption, 1, '0.0');
-            document.getElementById('max-consumption').textContent = `${maxConsumption} L/km`;
-            document.getElementById('start-time').textContent = formatTimestamp(selectedTrip.start_timestamp);
-            document.getElementById('end-time').textContent = formatTimestamp(selectedTrip.end_timestamp);
-
-            clearMap();
-            const validLocations = processTripLocations(selectedTrip);
-            const distance = selectedTrip.trip_distance ?? selectedTrip.distance ?? 0;
-            document.getElementById('locations-count').textContent = `${Number(distance).toFixed(2)} km`;
-
-            if (window.innerWidth <= 1024) hideSidebar();
-            }
-
-
-        function clearMap() {
-            markers.forEach(marker => map.removeLayer(marker));
-            markers = [];
-            if (polyline) {
-                map.removeLayer(polyline);
-                polyline = null;
-            }
-        }
-
-        function processTripLocations(trip) {
-            const locationsArray = Array.isArray(trip.trip_locations)
-                ? trip.trip_locations
-                : (trip.trip_locations ? Object.values(trip.trip_locations) : []);
-
-            if (locationsArray.length === 0) {
-                console.error("No valid trip_locations array found");
-                showNoLocationData();
-                return [];
-            }
-
-            console.log("Raw locations data:", locationsArray);
-
-            const validLocations = locationsArray
-                .filter(loc => loc !== null && loc !== undefined)
-                .map(normalizeLocation)
-                .filter(hasValidCoordinates);
-
-            console.log("Processed locations:", validLocations);
-
-            if (validLocations.length > 0) {
-                plotLocationsOnMap(validLocations);
-            } else {
-                console.error("No valid locations after filtering");
-                showNoLocationData();
-            }
-
-            return validLocations;
-        }
-
-        function hasValidCoordinates(location) {
-            const lat = getLatitude(location);
-            const lng = getLongitude(location);
-            
-            // Check for null island (0,0) and valid ranges
-            return lat !== null && lng !== null && 
-                !(lat === 0 && lng === 0) &&
-                Number.isFinite(lat) && Number.isFinite(lng) &&
-                lat >= -90 && lat <= 90 &&
-                lng >= -180 && lng <= 180;
-        }
-
-        function normalizeLocation(location) {
-            const lat = getLatitude(location);
-            const lng = getLongitude(location);
-            const consumption = location.lpkm ?? location.consumption?.lps ?? location.consumption?.current_consumption_l ?? null;
-
-            return {
-                lat,
-                lng,
-                time: location.time ?? location.timestamp ?? null,
-                time_string: location.time_string ?? null,
-                speed: location.speed ?? 0,
-                rpm: location.rpm ?? 0,
-                lpg: location.lpg ?? null,
-                consumption
-            };
-        }
-
-        function getLatitude(loc) {
-            if (loc.lat !== undefined && loc.lat !== null) return parseFloat(loc.lat);
-            if (loc.latitude !== undefined && loc.latitude !== null) return parseFloat(loc.latitude);
-            if (loc.position?.lat !== undefined && loc.position?.lat !== null) return parseFloat(loc.position.lat);
-            if (loc.Lat !== undefined && loc.Lat !== null) return parseFloat(loc.Lat);
-            return null;
-        }
-
-        function getLongitude(loc) {
-            if (loc.lng !== undefined && loc.lng !== null) return parseFloat(loc.lng);
-            if (loc.lon !== undefined && loc.lon !== null) return parseFloat(loc.lon);
-            if (loc.log !== undefined && loc.log !== null) return parseFloat(loc.log);
-            if (loc.longitude !== undefined && loc.longitude !== null) return parseFloat(loc.longitude);
-            if (loc.position?.lng !== undefined && loc.position?.lng !== null) return parseFloat(loc.position.lng);
-            if (loc.Lng !== undefined && loc.Lng !== null) return parseFloat(loc.Lng);
-            return null;
-        }
-
-        function plotLocationsOnMap(locations) {
-            const layerParts = [];
-            const startIcon = L.divIcon({ className: 'start-icon' });
-            const endIcon = L.divIcon({ className: 'end-icon' });
-
-            // Use circles for intermediate points, start/end icons for endpoints
-            locations.forEach((location, index) => {
-                const isFirst = index === 0;
-                const isLast = index === locations.length - 1;
-                const color = getSpeedColor(location.speed);
-                const speedDisplay = formatSpeed(location.speed);
-                const consumptionDisplay = formatConsumption(location.consumption);
-                const popupContent = `
-                        <b>Point ${index + 1}</b><br>
-                        Time: ${location.time_string || formatTimestamp(location.time)}<br>
-                        Speed: ${speedDisplay}<br>
-                        RPM: ${location.rpm || 0}<br>
-                        Consumption: ${consumptionDisplay}
-                    `;
-
-                let marker;
-                if (isFirst) {
-                    marker = L.marker([location.lat, location.lng], { icon: startIcon }).addTo(map);
-                } else if (isLast) {
-                    marker = L.marker([location.lat, location.lng], { icon: endIcon }).addTo(map);
-                } else {
-                    marker = L.circleMarker([location.lat, location.lng], {
-                        radius: 6,
-                        color,
-                        fillColor: color,
-                        fillOpacity: 0.7,
-                        weight: 1
-                    }).addTo(map);
-                }
-
-                marker.bindTooltip(popupContent, { direction: 'top', sticky: true, opacity: 0.9 });
-                markers.push(marker);
-                layerParts.push(marker);
-            });
-
-            // Build colored segments based on speed (0-200 km/h scale)
-            const segments = [];
-            for (let i = 1; i < locations.length; i++) {
-                const start = locations[i - 1];
-                const end = locations[i];
-                const segmentSpeed = start.speed ?? 0; // approximate speed for segment
-                const segmentColor = getSpeedColor(segmentSpeed);
-                const segment = L.polyline(
-                    [[start.lat, start.lng], [end.lat, end.lng]],
-                    { color: segmentColor, weight: 4, opacity: 0.85 }
-                ).addTo(map);
-                segments.push(segment);
-                layerParts.push(segment);
-            }
-
-            polyline = segments.length ? L.layerGroup(segments).addTo(map) : null;
-
-            focusMapOnLocations(layerParts);
-        }
-
-        function getSpeedColor(speed) {
-            const value = Number.isFinite(speed) ? speed : 0;
-            const clamped = Math.max(0, Math.min(200, value));
-            // Green (120) to Red (0) over 0-200 km/h
-            const hue = 120 - (clamped / 200) * 120;
-            return `hsl(${hue}, 80%, 50%)`;
-        }
-
-        function focusMapOnLocations(layers) {
-            if (!layers || layers.length === 0) return;
-            const group = L.featureGroup(layers);
-            const bounds = group.getBounds();
-            if (bounds.isValid()) {
-                map.invalidateSize(); // ensure container is sized before fitting
-                if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
-                    map.setView(bounds.getCenter(), 15); // single point
-                } else {
-                    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
-                }
-            }
-        }
-
-        function formatSpeed(speed) {
-            if (speed === undefined || speed === null || Number.isNaN(Number(speed))) return '0 km/h';
-            return `${Math.round(Number(speed))} km/h`;
-        }
-
-        function formatConsumption(consumption) {
-            if (consumption === undefined || consumption === null || Number.isNaN(Number(consumption))) return 'N/A';
-            return `${Number(consumption).toFixed(1)} L/km`;
-        }
-
-        // Format numbers with fixed decimals and safe fallback
-        function formatFixed(value, decimals = 1, fallback = 'N/A') {
-            const num = Number(value);
-            if (!Number.isFinite(num)) return fallback;
-            return num.toFixed(decimals);
-        }
-
-        function toHex(buffer) {
-            if (!buffer) return '';
-            return Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        }
-
-        function delay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        function parseGpsPosition(value) {
-            if (!value) return null;
-            const parts = String(value).split(',').map(p => p.trim());
-            if (parts.length < 2) return null;
-            const lat = Number(parts[0]);
-            const lng = Number(parts[1]);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-            return { lat, lng };
-        }
-
-        let notificationTimeout;
-        function showNotification(message, variant = 'info', durationMs = 5000) {
-            const banner = document.getElementById('notification-banner');
-            if (!banner) return;
-            clearTimeout(notificationTimeout);
-            banner.textContent = message;
-            banner.className = `notification-banner ${variant}`;
-            banner.style.display = 'block';
-            requestAnimationFrame(() => banner.classList.add('show'));
-            notificationTimeout = setTimeout(() => {
-                banner.classList.remove('show');
-                setTimeout(() => banner.style.display = 'none', 250);
-            }, durationMs);
-        }
-
-        function isBleConnected() {
-            return !!(bleDevice && bleDevice.gatt && bleDevice.gatt.connected);
-        }
-
-        function hasGpsFixValue(value) {
-            if (value == '0' || value == 'false') return false;
-            const normalized = String(value).toLowerCase();
-            return normalized.includes('fix') || normalized.includes('3d') || normalized.includes('2d') || normalized.includes('yes') || normalized.includes('valid') || normalized.includes('1');
-        }
-
-        function updateLiveCarMarkerIfNeeded() {
-            if (!map) return;
-            if (!isBleConnected() || !hasGpsFixValue(diagnosticData.gpsFix)) {
-                clearLiveCarMarker();
-                return;
-            }
-
-            const coords = diagnosticData.gpsPos;
-            if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
-                clearLiveCarMarker();
-                return;
-            }
-
-            const now = Date.now();
-            if (now - lastCarLocationTs < LIVE_CAR_UPDATE_INTERVAL && liveCarMarker) return;
-
-            lastCarLocationTs = now;
-            const latlng = [coords.lat, coords.lng];
-            if (liveCarMarker) {
-                liveCarMarker.setLatLng(latlng);
-            } else {
-                liveCarMarker = L.marker(latlng, { icon: carIcon }).addTo(map);
-            }
-        }
-
-        function clearLiveCarMarker() {
-            lastCarLocationTs = 0;
-            if (liveCarMarker) {
-                map.removeLayer(liveCarMarker);
-                liveCarMarker = null;
-            }
-        }
-
-        function showSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            sidebarOpen = true;
-            sidebar.classList.remove('hidden');
-            document.body.classList.add('sidebar-open');
-            setTimeout(() => map.invalidateSize(), 100);
-        }
-
-        function hideSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            const toggleBtn = document.getElementById('sidebar-toggle');
-            sidebarOpen = false;
-            sidebar.classList.add('hidden');
-            document.body.classList.remove('sidebar-open');
-            setTimeout(() => map.invalidateSize(), 100);
-        }
-
-        function showNoLocationData() {
-            map.setView([0, 0], 2);
-            L.popup()
-                .setLatLng([0, 0])
-                .setContent('No valid location data for this trip')
-                .openOn(map);
-        }
-                
-        // Update statistics
-        function updateStats() {
-            document.getElementById('total-trips').textContent = trips.length;
-            
-            const totalDistance = trips.reduce((sum, trip) => sum + (trip.trip_distance || 0), 0);
-            document.getElementById('total-distance').textContent = `${totalDistance.toFixed(2)} km`;
-            
-            const totalSeconds = trips.reduce((sum, trip) => sum + (trip.trip_duration || trip['trip duration'] || 0), 0);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            document.getElementById('total-time').textContent = `${hours > 0 ? hours + 'h ' : ''}${minutes}m`;
-            
-            // Calculate average speed (distance km / time hours)
-            const totalHours = totalSeconds / 3600;
-            const avgSpeed = totalHours > 0 ? (totalDistance / totalHours) : 0;
-            document.getElementById('avg-speed').textContent = `${avgSpeed.toFixed(1)} km/h`;
-        }
-        
-        // Format timestamp for display
-        function formatTimestamp(timestamp) {
-            if (!timestamp) return 'N/A';
-            const date = new Date(timestamp * 1000);
-            return date.toLocaleString();
-        }
-        
-        // Format duration for display
-        function formatDuration(seconds) {
-            if (!seconds) return 'N/A';
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            return `${hours > 0 ? hours + 'h ' : ''}${minutes > 0 || hours > 0 ? minutes + 'm ' : ''}${secs}s`;
-        }
-
-        // Compact duration for trip details: hides hours/minutes when zero, hides seconds when over 5 minutes
-        function formatDurationCompact(seconds) {
-            if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) return 'N/A';
-            const total = Math.max(0, Math.floor(seconds));
-            const hours = Math.floor(total / 3600);
-            const minutes = Math.floor((total % 3600) / 60);
-            const secs = total % 60;
-            const parts = [];
-            if (hours > 0) parts.push(`${hours}h`);
-            if (minutes > 0) parts.push(`${minutes}m`);
-            const includeSeconds = total <= 300; // show seconds only up to 5 minutes
-            if (includeSeconds && (secs > 0 || parts.length === 0)) {
-                parts.push(`${secs}s`);
-            }
-            return parts.join(' ') || '0s';
-        }
-    </script>
+    <script src="js/script.js"></script>
 </body>
+
 </html>

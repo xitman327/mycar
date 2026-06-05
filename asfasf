@@ -1,0 +1,267 @@
+from aiohttp import web
+import aiofiles
+import os
+import json
+import time
+from datetime import datetime
+
+UPLOAD_DIR = "/share/My_car_trips/uploaded"
+COMMAND_DIR = "/share/My_car_trips/commands"
+
+PASSPHRASE = "YOUR_SECRET_KEY_HERE"
+
+MAX_FILE_SIZE = 1024 * 1024 * 500  # 500MB
+
+
+# ============================================================
+# Utility
+# ============================================================
+
+def log_msg(msg):
+    log.info(f"[ESP32_SERVER] {msg}")
+
+    try:
+        service.call(
+            "persistent_notification",
+            "create",
+            title="ESP32 Upload Server",
+            message=msg,
+        )
+    except Exception as e:
+        log.error(f"Notification error: {e}")
+
+
+def check_auth(request):
+    key = request.headers.get("X-ESP32-KEY", "")
+
+    if key != PASSPHRASE:
+        return False
+
+    return True
+
+
+def safe_filename(name):
+    return (
+        name.replace("..", "_")
+        .replace("/", "_")
+        .replace("\\", "_")
+    )
+
+
+# ============================================================
+# Upload Endpoint
+# ============================================================
+
+async def upload_handler(request):
+
+    if not check_auth(request):
+        return web.json_response(
+            {"status": "error", "message": "unauthorized"},
+            status=401
+        )
+
+    reader = await request.multipart()
+
+    field = await reader.next()
+
+    if field is None:
+        return web.json_response(
+            {"status": "error", "message": "no file"}
+        )
+
+    if field.name != "file":
+        return web.json_response(
+            {"status": "error", "message": "field must be named file"}
+        )
+
+    filename = safe_filename(field.filename)
+
+    if not filename:
+        filename = f"upload_{int(time.time())}.bin"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    final_name = f"{timestamp}_{filename}"
+
+    filepath = os.path.join(UPLOAD_DIR, final_name)
+
+    size = 0
+
+    async with aiofiles.open(filepath, "wb") as f:
+
+        while True:
+
+            chunk = await field.read_chunk()
+
+            if not chunk:
+                break
+
+            size += len(chunk)
+
+            if size > MAX_FILE_SIZE:
+                await f.close()
+
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+
+                return web.json_response(
+                    {
+                        "status": "error",
+                        "message": "file too large"
+                    },
+                    status=413
+                )
+
+            await f.write(chunk)
+
+    log_msg(f"Uploaded file: {final_name} ({size} bytes)")
+
+    return web.json_response(
+        {
+            "status": "ok",
+            "filename": final_name,
+            "size": size
+        }
+    )
+
+
+# ============================================================
+# Command Polling
+# ============================================================
+
+async def command_handler(request):
+
+    if not check_auth(request):
+        return web.json_response(
+            {"status": "error", "message": "unauthorized"},
+            status=401
+        )
+
+    device = request.query.get("device", "unknown")
+
+    cmd_file = os.path.join(COMMAND_DIR, f"{device}.json")
+
+    if not os.path.exists(cmd_file):
+        return web.json_response(
+            {
+                "status": "ok",
+                "command": None
+            }
+        )
+
+    try:
+        async with aiofiles.open(cmd_file, "r") as f:
+            content = await f.read()
+
+        data = json.loads(content)
+
+        return web.json_response(
+            {
+                "status": "ok",
+                "command": data
+            }
+        )
+
+    except Exception as e:
+
+        log.error(f"Command read error: {e}")
+
+        return web.json_response(
+            {
+                "status": "error",
+                "message": str(e)
+            }
+        )
+
+
+# ============================================================
+# Command ACK
+# ============================================================
+
+async def ack_handler(request):
+
+    if not check_auth(request):
+        return web.json_response(
+            {"status": "error", "message": "unauthorized"},
+            status=401
+        )
+
+    try:
+        data = await request.json()
+
+        device = data.get("device", "unknown")
+        result = data.get("result", "")
+        command = data.get("command", "")
+
+        log_msg(
+            f"ACK from {device}: command={command} result={result}"
+        )
+
+        return web.json_response(
+            {
+                "status": "ok"
+            }
+        )
+
+    except Exception as e:
+
+        return web.json_response(
+            {
+                "status": "error",
+                "message": str(e)
+            }
+        )
+
+
+# ============================================================
+# Health Endpoint
+# ============================================================
+
+async def ping_handler(request):
+
+    return web.json_response(
+        {
+            "status": "online",
+            "server": "Home Assistant ESP32 Upload Server"
+        }
+    )
+
+
+# ============================================================
+# Start Server
+# ============================================================
+
+@time_trigger("startup")
+def start_server():
+
+    async def setup():
+
+        app = web.Application(
+            client_max_size=MAX_FILE_SIZE
+        )
+
+        app.router.add_post("/esp32/upload", upload_handler)
+
+        app.router.add_get("/esp32/command", command_handler)
+
+        app.router.add_post("/esp32/ack", ack_handler)
+
+        app.router.add_get("/esp32/ping", ping_handler)
+
+        runner = web.AppRunner(app)
+
+        await runner.setup()
+
+        site = web.TCPSite(
+            runner,
+            "0.0.0.0",
+            8099
+        )
+
+        await site.start()
+
+        log_msg("ESP32 upload server started on port 8099")
+
+    task.create(setup())
