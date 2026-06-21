@@ -43,9 +43,9 @@ function parseTripFile(content, filename) {
         trip_locations_count: footer.trip_locations_count || locations.length,
         trip_locations: locations,
         log_objs: header.log_objs,
-        trip_distance: footer.trip_distance || 0,
+        trip_distance: footer.trip_distance_km || 0,
         top_speed: footer.top_speed || 0,
-        max_consumption: footer.max_consumption || 0,
+        max_consumption: footer.top_consumption || 0,
         avg_consumption: footer.avg_consumption || 0
     };
 }
